@@ -15,6 +15,7 @@ import tensorflow as tf
 import numpy as np
 #import matplotlib.pyplot as plt
 
+import os
 import cPickle as pickle
 
 # Import MINST data
@@ -26,19 +27,27 @@ for line in open('all-20160307.log.feature','r'):
     #print([float(x) for x in line.replace('[','').replace(']','').replace(',',' ').split()])
     features.append([float(x) for x in line.replace('[','').replace(']','').replace(',',' ').split()])
 '''
-features = pickle.load(open('output/testInput.log.feature', 'rb'))
-#print(features)
+features = []
+for filename in os.listdir('output/'):
+    features.extend( pickle.load(open('output/'+filename, 'rb')) )
+for f in features:
+    print(f)
+print(len(features))
 
-num_examples = 10 #1281686
+
+num_examples = int(len(features)*0.9) #1281686
+print('num_examples: ', num_examples)
 train_features = features[:num_examples]
 test_features = features[num_examples:]
-
+for f in test_features: print(f)
 # Parameters
 learning_rate = 0.01
-training_epochs = 100
-batch_size = 256
+training_epochs = 2000
+#batch_size = 256
+batch_size = 20
 display_step = 1
-examples_to_show = 10
+#examples_to_show = 1 
+examples_to_show = len(test_features) 
 
 # Network Parameters
 n_input = 8 # MNIST data input (img shape: 28*28)
@@ -110,7 +119,7 @@ with tf.Session() as sess:
         for i in xrange(1,total_batch):
             end = i*batch_size
             batch_xs = train_features[start:end]
-            print(batch_xs)
+            #print(batch_xs)
             # Run optimization op (backprop) and cost op (to get loss value)
             _, c = sess.run([optimizer, cost], feed_dict={X: batch_xs})
             start = end+1
@@ -123,9 +132,24 @@ with tf.Session() as sess:
     print("Optimization Finished!")
 
     # Applying encode and decode over test set
-    encode_decode = sess.run(
-        y_pred, feed_dict={X: test_features[:examples_to_show]})
+    encode_decode, c = sess.run(
+        [y_pred, cost], feed_dict={X: test_features[:examples_to_show]})
     # Compare original images with their reconstructions
-    #for i in range(examples_to_show):
-    #    print test_features[i]
-    #    print encode_decode[i]
+    for i in range(examples_to_show):
+        print('\ntesting: ', ', '.join('{0:.3f}'.format(k) for k in test_features[i]))
+        print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[i]))
+    print("\ntest cost=", "{:.9f}\n".format(c))
+
+   
+    anormal_features = [
+        [-0.999, -0.999, 0.20, 1.0, 1.0, 1.0, 1.0, 1.0]
+#        [5.0, 4.5, 3.2, 1.0, 1.0, 1.0, 1.0, 1.0]
+    ]
+
+    encode_decode, c = sess.run(
+        [y_pred, cost], feed_dict={X: anormal_features[:examples_to_show]})
+    # Compare original images with their reconstructions
+    for i in range(len(anormal_features)):
+        print('\nanormal: ', ', '.join('{0:.3f}'.format(k) for k in anormal_features[i]))
+        print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[i]))
+        print("\ntest cost=", "{:.9f}\n".format(c))

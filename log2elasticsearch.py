@@ -58,6 +58,7 @@ def rawlog2json(rawlog_list):
 
 def countPastLogMean(rawlog_list):
     timestamp = datetime.strptime(rawlog_list[1]+'T'+rawlog_list[2], '%Y-%m-%dT%H:%M:%S')
+    justnow   = timestamp - timedelta(seconds=1)
     past1days = timestamp - timedelta(days=1)
     past3days = timestamp - timedelta(days=3)
     past7days = timestamp - timedelta(days=7)
@@ -92,7 +93,7 @@ def countPastLogMean(rawlog_list):
     #for ip in response.aggregations.distinct_ip.buckets:
     #    print 'distince_ip:', ip.key, ip.doc_count
 
-    s = s.filter('range', **{'time':{'from':past3days, 'to':timestamp}})
+    s = s.filter('range', **{'time':{'from':past3days, 'to':justnow}})
     response = s.execute()
     past3daysCount = response.hits.total
     #print 'past3days', response.hits.total
@@ -100,7 +101,7 @@ def countPastLogMean(rawlog_list):
     #    print item.time
         #print json.dumps(item.to_dict(), indent=4)
 
-    s = s.filter('range', **{'time':{'from':past1days, 'to':timestamp}})
+    s = s.filter('range', **{'time':{'from':past1days, 'to':justnow}})
     response = s.execute()
     past1daysCount = response.hits.total
     #print 'past1days', response.hits.total
@@ -111,43 +112,46 @@ def countPastLogMean(rawlog_list):
     #return [ past1daysCount, past3daysCount/3.0, past7daysCount/7.0, distinctDevice, distinctIp ]
     return past1daysCount, past3daysCount/3.0, past7daysCount/7.0
 
-def checkIsNewItem(dictionary, key, item):
-    if key in dictionary:
-        if item in dictionary[key]:
-            return 0.0
-    dictionary[key] = item
+def checkIsNewItem(List, item):
+    if item in List:
+        return 0.0
+    List.append(item)
     return 1.0
 
 def generateFeatures(rawlog_list):
     past1daysMean, past3daysMean, past7daysMean = countPastLogMean(rawlog_list)
- 
-    # load Dicts
-    deviceDict = pickle.load(open('data/deviceDict', 'rb')) if os.path.isfile('data/deviceDict') else {}
-    ipDict = pickle.load(open('data/ipDict', 'rb')) if os.path.isfile('data/ipDict') else {}
-    cityDict = pickle.load(open('data/cityDict', 'rb')) if os.path.isfile('data/cityDict') else {}
-    countyDict = pickle.load(open('data/countyDict', 'rb')) if os.path.isfile('data/countyDict') else {}
-    nationDict = pickle.load(open('data/nationDict', 'rb')) if os.path.isfile('data/nationDict') else {}
-    print 'deviceDict', json.dumps(deviceDict, indent=4)
-    
-    # 1.0 if is new item(e.g. device), 0.0 if item(e.g. device) already exist
-    newDevice = checkIsNewItem(deviceDict, user, device) 
-    newIp = checkIsNewItem(ipDict, user, ip) 
-    newCity = checkIsNewItem(cityDict, user, city) 
-    newCounty = checkIsNewItem(countyDict, user, county) 
-    newNation = checkIsNewItem(nationDict, user, nation) 
-    
-    # update Dicts
-    pickle.dump(deviceDict, open('data/deviceDict', 'wb'))
-    pickle.dump(ipDict, open('data/ipDict', 'wb'))
-    pickle.dump(cityDict, open('data/cityDict', 'wb'))
-    pickle.dump(countyDict, open('data/countyDict', 'wb'))
-    pickle.dump(nationDict, open('data/nationDict', 'wb'))
-    
-    features = [past1daysMean, past3daysMean, past7daysMean, newDevice, newIp, newCity, newCounty, newNation]
+
+    res = es.get(index='ai2', doc_type='data', id=user, ignore=[400,404])
+    if not res['found']:
+        doc = {
+            'device':[device],
+            'ip':[ip],
+            'city':[city],
+            'county':[county],
+            'nation':[nation]
+        }
+        es.index(index='ai2',doc_type='data', id=user, body=doc)
+        newDevice = newIp = newCity = newCounty = newNation = 1.0
+    else:
+        #print json.dumps(res, indent=4)
+        doc = res['_source']
+        newDevice = checkIsNewItem(doc['device'], device) 
+        newIp     = checkIsNewItem(doc['ip'], ip) 
+        newCity   = checkIsNewItem(doc['city'], city) 
+        newCounty = checkIsNewItem(doc['county'], county) 
+        newNation = checkIsNewItem(doc['nation'], nation) 
+        #print 'doc', json.dumps(doc, indent=4)
+        es.index(index='ai2', doc_type='data', id=user, body=doc, refresh=True)        
+  
+    delta = 0.000001
+    #TODO compare with same day(e.g. Monday) of the past 4 weeks 
+    f0 = (past1daysMean-past3daysMean)/(past3daysMean+delta)
+    f1 = (past1daysMean-past7daysMean)/(past7daysMean+delta)
+    f2 = (past3daysMean-past7daysMean)/(past7daysMean+delta)
+    features = [f0, f1, f2, newDevice, newIp, newCity, newCounty, newNation]
     return features
 
 def doWork(rawlog_list):        
-   
     # save log into elasticsearch and refresh elasticsearch
     id_str = date+'T'+time+'_'+user+'_'+service 
     newRecord(rawlog_list, id_str)
@@ -175,19 +179,19 @@ if __name__ == '__main__':
     
     path = 'rawlog/'
     start_date = date(2016,6,1)
-    end_date = date(2016,6,1)
+    end_date = date(2016,6,30)
     
     #for filename in os.listdir(path):
     for d in dategenerator(start_date, end_date):
-        filename = 'testInput.log'
-        #filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
+        #filename = 'testInput.log'
+        filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
         print 'Processing ',filename
         
         #inputFile = open('rawlog/testInput.log', 'rb') 
         inputFile = codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') 
         rawlog_lists = csv.reader(inputFile)
         rawlog_lists = sorted(rawlog_lists, key =itemgetter(2))
-        for l in rawlog_lists: print l
+        #for l in rawlog_lists: print l
         
         
         #TODO multicore jobs
@@ -195,6 +199,9 @@ if __name__ == '__main__':
         outFile = open('output/'+filename+'.feature', 'wb')
         lists = []
         for rawlog_list in rawlog_lists:
+            if len(rawlog_list) != 10:
+                print 'Format Error At line '+str(rawlog_lists.index(rawlog_list))+': '+str(rawlog_list)
+                continue
             service = rawlog_list[0]
             date    = rawlog_list[1]
             time    = rawlog_list[2]
@@ -205,8 +212,10 @@ if __name__ == '__main__':
             city    = rawlog_list[7]
             county  = rawlog_list[8]
             nation  = rawlog_list[9]
-
-            features = doWork(rawlog_list)
-            lists.append(features)
+            
+            if user == 'r04921039':
+                # features = [past1daysMean, past3daysMean, past7daysMean, newDevice, newIp, newCity, newCounty, newNation]
+                features = doWork(rawlog_list)
+                lists.append(features)
             
         pickle.dump(lists, outFile)
