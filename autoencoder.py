@@ -13,20 +13,25 @@ from __future__ import division, print_function, absolute_import
 
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
+
+import cPickle as pickle
 
 # Import MINST data
 #from tensorflow.examples.tutorials.mnist import input_data
 #mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
-features = []
+'''
+features = [] 
 for line in open('all-20160307.log.feature','r'):
     #print([float(x) for x in line.replace('[','').replace(']','').replace(',',' ').split()])
     features.append([float(x) for x in line.replace('[','').replace(']','').replace(',',' ').split()])
-num_examples = 15000 #1281686
-#train_features = features[:num_examples]
-#test_features = features[num_examples:]
-train_features = features[0:15000]
-test_features = features[15001:16851]
+'''
+features = pickle.load(open('output/testInput.log.feature', 'rb'))
+#print(features)
+
+num_examples = 10 #1281686
+train_features = features[:num_examples]
+test_features = features[num_examples:]
 
 # Parameters
 learning_rate = 0.01
@@ -36,7 +41,7 @@ display_step = 1
 examples_to_show = 10
 
 # Network Parameters
-n_input = 5 # MNIST data input (img shape: 28*28)
+n_input = 8 # MNIST data input (img shape: 28*28)
 n_hidden_1 = 4 # 1st layer num features
 n_hidden_2 = 2 # 2nd layer num features
 
@@ -105,7 +110,7 @@ with tf.Session() as sess:
         for i in xrange(1,total_batch):
             end = i*batch_size
             batch_xs = train_features[start:end]
-            #print(batch_xs)
+            print(batch_xs)
             # Run optimization op (backprop) and cost op (to get loss value)
             _, c = sess.run([optimizer, cost], feed_dict={X: batch_xs})
             start = end+1

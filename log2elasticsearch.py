@@ -2,14 +2,13 @@ import os, json, csv, pickle
 import collections, codecs
 from operator import itemgetter 
 from datetime import date, datetime, timedelta
+from multiprocessing import Process, Queue, Pool
 
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Index, DocType, String, Date, Integer, Boolean
 from elasticsearch_dsl import Search, Q 
 from elasticsearch_dsl.connections import connections 
 
-# Define a defualt Elasticsearch client
-client = connections.create_connection(hosts=['localhost:9200'])
 
 class Record(DocType):
     user = String(analyzer='snowball', fields={'raw': String(index='not_analyzed')})
@@ -48,14 +47,16 @@ def rawlog2json(rawlog_list):
         ('time', rawlog_list[1]+'T'+rawlog_list[2]),
         ('service', rawlog_list[0]),
         ('device',rawlog_list[6]),
-        #('city','Taipei'),
         ('ip',rawlog_list[5]),
-        ('ip2',rawlog_list[4])
+        ('server',rawlog_list[4]),
+        ('city',rawlog_list[7]),
+        ('county',rawlog_list[8]),
+        ('nation',rawlog_list[9])
     ]) 
     return json.dumps(data, ensure_ascii=False, indent=4) 
 
 
-def generateVector(rawlog_list):
+def countPastLogMean(rawlog_list):
     timestamp = datetime.strptime(rawlog_list[1]+'T'+rawlog_list[2], '%Y-%m-%dT%H:%M:%S')
     past1days = timestamp - timedelta(days=1)
     past3days = timestamp - timedelta(days=3)
@@ -108,7 +109,55 @@ def generateVector(rawlog_list):
         #print json.dumps(item.to_dict(), indent=4)
 
     #return [ past1daysCount, past3daysCount/3.0, past7daysCount/7.0, distinctDevice, distinctIp ]
-    return [ past1daysCount, past3daysCount/3.0, past7daysCount/7.0, 0.0, 0.0]
+    return past1daysCount, past3daysCount/3.0, past7daysCount/7.0
+
+def checkIsNewItem(dictionary, key, item):
+    if key in dictionary:
+        if item in dictionary[key]:
+            return 0.0
+    dictionary[key] = item
+    return 1.0
+
+def generateFeatures(rawlog_list):
+    past1daysMean, past3daysMean, past7daysMean = countPastLogMean(rawlog_list)
+ 
+    # load Dicts
+    deviceDict = pickle.load(open('data/deviceDict', 'rb')) if os.path.isfile('data/deviceDict') else {}
+    ipDict = pickle.load(open('data/ipDict', 'rb')) if os.path.isfile('data/ipDict') else {}
+    cityDict = pickle.load(open('data/cityDict', 'rb')) if os.path.isfile('data/cityDict') else {}
+    countyDict = pickle.load(open('data/countyDict', 'rb')) if os.path.isfile('data/countyDict') else {}
+    nationDict = pickle.load(open('data/nationDict', 'rb')) if os.path.isfile('data/nationDict') else {}
+    print 'deviceDict', json.dumps(deviceDict, indent=4)
+    
+    # 1.0 if is new item(e.g. device), 0.0 if item(e.g. device) already exist
+    newDevice = checkIsNewItem(deviceDict, user, device) 
+    newIp = checkIsNewItem(ipDict, user, ip) 
+    newCity = checkIsNewItem(cityDict, user, city) 
+    newCounty = checkIsNewItem(countyDict, user, county) 
+    newNation = checkIsNewItem(nationDict, user, nation) 
+    
+    # update Dicts
+    pickle.dump(deviceDict, open('data/deviceDict', 'wb'))
+    pickle.dump(ipDict, open('data/ipDict', 'wb'))
+    pickle.dump(cityDict, open('data/cityDict', 'wb'))
+    pickle.dump(countyDict, open('data/countyDict', 'wb'))
+    pickle.dump(nationDict, open('data/nationDict', 'wb'))
+    
+    features = [past1daysMean, past3daysMean, past7daysMean, newDevice, newIp, newCity, newCounty, newNation]
+    return features
+
+def doWork(rawlog_list):        
+   
+    # save log into elasticsearch and refresh elasticsearch
+    id_str = date+'T'+time+'_'+user+'_'+service 
+    newRecord(rawlog_list, id_str)
+    es.indices.refresh(index='ai2') 
+   
+    features = generateFeatures(rawlog_list)
+    print rawlog2json(rawlog_list)
+    print features
+    #print >> outFile, features
+    return features
 
 def dategenerator(start, end):
     current = start
@@ -116,68 +165,48 @@ def dategenerator(start, end):
         yield current
         current += timedelta(days=1)
 
-es = Elasticsearch()
-#es.indices.delete(index='ai2',ignore=[400,404])
-Record.init()
-path = 'rawlog/'
-start_date = date(2016,3,6)
-end_date = date(2016,3,7)
-
-deviceDict = {}
-ipDict = {}
-pickle.dump(deviceDict, open('output/deviceDict', 'wb'))
-pickle.dump(ipDict, open('output/ipDict', 'wb'))
-
-#for filename in os.listdir(path):
-for d in dategenerator(start_date, end_date):
-    filename = 'all-'+d.strftime('%Y%m%d')+'.log'
-    print filename
-    lists = []
-    #with open('inputfile.txt', 'rb') as inputFile:
-    with codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') as inputFile:
-        outFile = open(filename+'.feature', 'wb')
-        deviceDict = pickle.load(open('output/deviceDict', 'rb'))
-        ipDict = pickle.load(open('output/ipDict', 'rb'))
+if __name__ == '__main__':
+    # Define a defualt Elasticsearch client
+    client = connections.create_connection(hosts=['localhost:9200'])
+    
+    es = Elasticsearch()
+    es.indices.delete(index='ai2',ignore=[400,404])
+    Record.init()
+    
+    path = 'rawlog/'
+    start_date = date(2016,6,1)
+    end_date = date(2016,6,1)
+    
+    #for filename in os.listdir(path):
+    for d in dategenerator(start_date, end_date):
+        filename = 'testInput.log'
+        #filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
+        print 'Processing ',filename
+        
+        #inputFile = open('rawlog/testInput.log', 'rb') 
+        inputFile = codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') 
         rawlog_lists = csv.reader(inputFile)
         rawlog_lists = sorted(rawlog_lists, key =itemgetter(2))
-        i = 0
-        total = str(len(rawlog_lists))
+        for l in rawlog_lists: print l
+        
+        
+        #TODO multicore jobs
+    
+        outFile = open('output/'+filename+'.feature', 'wb')
+        lists = []
         for rawlog_list in rawlog_lists:
-            #print rawlog2json(rawlog_list)
-            if i%1000 == 0: 
-                print filename+' '+str(i)+'/'+total, rawlog_list[2]
-            i = i+1
             service = rawlog_list[0]
-            date = rawlog_list[1]
-            time = rawlog_list[2]
-            user = rawlog_list[3]
-            ip = rawlog_list[5]
-            device = rawlog_list[6]
-            
-            id_str = date+'T'+time+'_'+user+'_'+service 
-            #print id_str
-            newRecord(rawlog_list, id_str)
+            date    = rawlog_list[1]
+            time    = rawlog_list[2]
+            user    = rawlog_list[3]
+            server  = rawlog_list[4]
+            ip      = rawlog_list[5]
+            device  = rawlog_list[6]
+            city    = rawlog_list[7]
+            county  = rawlog_list[8]
+            nation  = rawlog_list[9]
 
-            es.indices.refresh(index='ai2') 
-            features = generateVector(rawlog_list)
-           
+            features = doWork(rawlog_list)
+            lists.append(features)
             
-            if user in deviceDict:
-                if device not in deviceDict[user]:
-                    features[3] = 1.0
-            else:
-                deviceDict[user] = [device]
-                features[3] = 1.0
-
-            if user in ipDict:
-                if ip not in ipDict[user]:
-                    features[4] = 1.0
-            else:
-                ipDict[user] = [ip]
-                features[4] = 1.0
-            print >> outFile, features
-            
-            #lists.append(features)
-    #pickle.dump(lists, open('output/'+d.strftime('%Y%m%d')+'.features', 'wb'))
-    pickle.dump(deviceDict, open('output/deviceDict', 'wb'))
-    pickle.dump(ipDict, open('output/ipDict', 'wb'))
+        pickle.dump(lists, outFile)
