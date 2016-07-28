@@ -1,4 +1,4 @@
-import os, json, csv, pickle
+import os, logging, json, csv, pickle
 import collections, codecs
 from operator import itemgetter 
 from datetime import date, datetime, timedelta
@@ -11,16 +11,15 @@ from elasticsearch_dsl.connections import connections
 
 
 class Record(DocType):
-    user = String(analyzer='snowball', fields={'raw': String(index='not_analyzed')})
-    time = Date()
-    service = String(index='not_analyzed')
-    device = String(index='not_analyzed')
-    ip = String(index='not_analyzed')
-    ip2 = String(index='not_analyzed')
-    #new_service = Boolean()
-    #new_device = Boolean()
-    #new_city = Boolean()
-    #new_ip = Boolean()
+    user    = String(analyzer='snowball', fields={'raw': String(index='not_analyzed')})
+    time    = Date()
+    service = String(index='not_analyzed') 
+    server  = String(index='not_analyzed')
+    ip      = String(index='not_analyzed')
+    device  = String(index='not_analyzed')
+    city    = String(index='not_analyzed')
+    county  = String(index='not_analyzed')
+    nation  = String(index='not_analyzed')
 
     class Meta:
         index = 'ai2'
@@ -31,15 +30,23 @@ class Record(DocType):
 
 
 def newRecord(rawlog_list, id_num):
-    record = Record(meta={'id': id_num}) 
     #record = Record() 
-    record.user = rawlog_list[3] 
-    record.time = datetime.strptime(rawlog_list[1]+'T'+rawlog_list[2], '%Y-%m-%dT%H:%M:%S')
-    record.service = rawlog_list[0] 
-    record.device = rawlog_list[6] 
-    record.ip = rawlog_list[5] 
-    record.ip2 = rawlog_list[4] 
-    record.save()
+    record = Record(meta={'id': id_num}) 
+    record.service = rawlog_list[0]
+    record.time    = datetime.strptime(rawlog_list[1]+'T'+rawlog_list[2], '%Y-%m-%dT%H:%M:%S')
+    #record.date   = rawlog_list[1]
+    #record.time   = rawlog_list[2]
+    record.user    = rawlog_list[3]
+    record.server  = rawlog_list[4]
+    record.ip      = rawlog_list[5]
+    record.device  = rawlog_list[6]
+    record.city    = rawlog_list[7]
+    record.county  = rawlog_list[8]
+    record.nation  = rawlog_list[9]
+    try: 
+        record.save()
+    except KeyError:
+        pass
 
 def rawlog2json(rawlog_list):
     data = collections.OrderedDict([
@@ -78,7 +85,11 @@ def countPastLogMean(rawlog_list):
     #s.aggs.bucket('distinct_device', 'terms', field='device')
     #s.aggs.bucket('distinct_ip', 'terms', field='ip')
     response = s.execute()
-    past7daysCount = response.hits.total
+    try: 
+        past7daysCount = response.hits.total
+    except KeyError:
+        past7daysCount = response.hits.total 
+    #print json.dumps(response, indent=4)
     #print 'past7days:',past7daysCount 
     #for item in response.hits:
     #    print item.time
@@ -95,7 +106,11 @@ def countPastLogMean(rawlog_list):
 
     s = s.filter('range', **{'time':{'from':past3days, 'to':justnow}})
     response = s.execute()
-    past3daysCount = response.hits.total
+    try: 
+        past3daysCount = response.hits.total
+    except KeyError:
+        past3daysCount = response.hits.total
+    #past3daysCount = 0 if not response['found'] else response.hits.total
     #print 'past3days', response.hits.total
     #for item in response.hits:
     #    print item.time
@@ -103,7 +118,10 @@ def countPastLogMean(rawlog_list):
 
     s = s.filter('range', **{'time':{'from':past1days, 'to':justnow}})
     response = s.execute()
-    past1daysCount = response.hits.total
+    try: 
+        past1daysCount = response.hits.total
+    except KeyError:
+        past1daysCount = response.hits.total
     #print 'past1days', response.hits.total
     #for item in response.hits:
     #    print item.time
@@ -119,9 +137,21 @@ def checkIsNewItem(List, item):
     return 1.0
 
 def generateFeatures(rawlog_list):
+    service = rawlog_list[0]
+    date    = rawlog_list[1]
+    time    = rawlog_list[2]
+    user    = rawlog_list[3]
+    server  = rawlog_list[4]
+    ip      = rawlog_list[5]
+    device  = rawlog_list[6]
+    city    = rawlog_list[7]
+    county  = rawlog_list[8]
+    nation  = rawlog_list[9]
+    
     past1daysMean, past3daysMean, past7daysMean = countPastLogMean(rawlog_list)
 
-    res = es.get(index='ai2', doc_type='data', id=user, ignore=[400,404])
+    es = Elasticsearch()
+    res = es.get(index='ai2', doc_type='data', id=user, ignore=[400, 404])
     if not res['found']:
         doc = {
             'device':[device],
@@ -130,7 +160,7 @@ def generateFeatures(rawlog_list):
             'county':[county],
             'nation':[nation]
         }
-        es.index(index='ai2',doc_type='data', id=user, body=doc)
+        res = es.index(index='ai2',doc_type='data', id=user, body=doc)
         newDevice = newIp = newCity = newCounty = newNation = 1.0
     else:
         #print json.dumps(res, indent=4)
@@ -141,27 +171,68 @@ def generateFeatures(rawlog_list):
         newCounty = checkIsNewItem(doc['county'], county) 
         newNation = checkIsNewItem(doc['nation'], nation) 
         #print 'doc', json.dumps(doc, indent=4)
-        es.index(index='ai2', doc_type='data', id=user, body=doc, refresh=True)        
+        res = es.index(index='ai2', doc_type='data', id=user, body=doc, refresh=True)        
   
     delta = 0.000001
     #TODO compare with same day(e.g. Monday) of the past 4 weeks 
     f0 = (past1daysMean-past3daysMean)/(past3daysMean+delta)
     f1 = (past1daysMean-past7daysMean)/(past7daysMean+delta)
     f2 = (past3daysMean-past7daysMean)/(past7daysMean+delta)
+    
+    #features = [past1daysMean, past3daysMean, past7daysMean, newDevice, newIp, newCity, newCounty, newNation]
     features = [f0, f1, f2, newDevice, newIp, newCity, newCounty, newNation]
     return features
 
 def doWork(rawlog_list):        
+    if len(rawlog_list) != 10:
+        print 'Format Error At line '+str(rawlog_lists.index(rawlog_list))+': '+str(rawlog_list)
+        return 
+
+    service = rawlog_list[0]
+    date    = rawlog_list[1]
+    time    = rawlog_list[2]
+    user    = rawlog_list[3]
+    server  = rawlog_list[4]
+    ip      = rawlog_list[5]
+    device  = rawlog_list[6]
+    city    = rawlog_list[7]
+    county  = rawlog_list[8]
+    nation  = rawlog_list[9]
+    ''' 
+    doc = {
+        'device':[device],
+        'ip':[ip],
+        'city':[city],
+        'county':[county],
+        'nation':[nation]
+    }
+    es.index(index='ai2',doc_type='data', id=user, body=doc, refresh=True, ignore=[400])
+    '''
+    print time 
+    if user != 'r04921039':
+        return  
+            
     # save log into elasticsearch and refresh elasticsearch
+    es = Elasticsearch()
     id_str = date+'T'+time+'_'+user+'_'+service 
     newRecord(rawlog_list, id_str)
-    es.indices.refresh(index='ai2') 
+    res = es.indices.refresh(index='ai2') 
    
+    # features = [past1daysMean, past3daysMean, past7daysMean, newDevice, newIp, newCity, newCounty, newNation]
     features = generateFeatures(rawlog_list)
-    print rawlog2json(rawlog_list)
-    print features
+    #print rawlog2json(rawlog_list)
+    #print features
     #print >> outFile, features
-    return features
+    del es
+    if features is not None: 
+        return features
+
+def doWork_mp(args):
+    try:
+        return doWork(args)
+    except Exception:
+        #logging.exception("f(%r) failed" % (args,))
+        pass
 
 def dategenerator(start, end):
     current = start
@@ -174,18 +245,18 @@ if __name__ == '__main__':
     client = connections.create_connection(hosts=['localhost:9200'])
     
     es = Elasticsearch()
-    es.indices.delete(index='ai2',ignore=[400,404])
+    #es.indices.delete(index='ai2',ignore=[400,404])
     Record.init()
     
     path = 'rawlog/'
     start_date = date(2016,6,1)
-    end_date = date(2016,6,30)
+    end_date = date(2016,6,1)
     
     #for filename in os.listdir(path):
     for d in dategenerator(start_date, end_date):
-        #filename = 'testInput.log'
-        filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
-        print 'Processing ',filename
+        filename = 'testInput.log'
+        #filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
+        print 'Processing ',filename, ' ...'
         
         #inputFile = open('rawlog/testInput.log', 'rb') 
         inputFile = codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') 
@@ -193,29 +264,19 @@ if __name__ == '__main__':
         rawlog_lists = sorted(rawlog_lists, key =itemgetter(2))
         #for l in rawlog_lists: print l
         
-        
-        #TODO multicore jobs
-    
-        outFile = open('output/'+filename+'.feature', 'wb')
-        lists = []
-        for rawlog_list in rawlog_lists:
-            if len(rawlog_list) != 10:
-                print 'Format Error At line '+str(rawlog_lists.index(rawlog_list))+': '+str(rawlog_list)
-                continue
-            service = rawlog_list[0]
-            date    = rawlog_list[1]
-            time    = rawlog_list[2]
-            user    = rawlog_list[3]
-            server  = rawlog_list[4]
-            ip      = rawlog_list[5]
-            device  = rawlog_list[6]
-            city    = rawlog_list[7]
-            county  = rawlog_list[8]
-            nation  = rawlog_list[9]
-            
-            if user == 'r04921039':
-                # features = [past1daysMean, past3daysMean, past7daysMean, newDevice, newIp, newCity, newCounty, newNation]
-                features = doWork(rawlog_list)
-                lists.append(features)
-            
-        pickle.dump(lists, outFile)
+       
+        # multiprocess  
+        pool = Pool(processes=24)
+        ''' 
+        output = []
+        results = [pool.apply_async(doWork_mp, args=(rawlog_list,)) for rawlog_list in rawlog_lists]
+        for p in results:
+            result = p.get()
+            if result is not None:
+                output.append(result)
+        #output = [p.get() for p in results]
+        ''' 
+        output = [pool.apply(doWork, args=(rawlog_list,)) for rawlog_list in rawlog_lists]
+        #print(output)
+        pickle.dump(output, open('output/'+filename+'.feature', 'wb'))
+    del Record

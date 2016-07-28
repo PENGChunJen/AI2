@@ -30,6 +30,7 @@ for line in open('all-20160307.log.feature','r'):
 features = []
 for filename in os.listdir('output/'):
     features.extend( pickle.load(open('output/'+filename, 'rb')) )
+features = pickle.load(open('output/testInput.log.feature', 'rb'))
 for f in features:
     print(f)
 print(len(features))
@@ -43,9 +44,10 @@ for f in test_features: print(f)
 # Parameters
 learning_rate = 0.01
 training_epochs = 2000
+#training_epochs = 2000
 #batch_size = 256
 batch_size = 20
-display_step = 1
+display_step = 100
 #examples_to_show = 1 
 examples_to_show = len(test_features) 
 
@@ -132,13 +134,17 @@ with tf.Session() as sess:
     print("Optimization Finished!")
 
     # Applying encode and decode over test set
-    encode_decode, c = sess.run(
-        [y_pred, cost], feed_dict={X: test_features[:examples_to_show]})
+    #encode_decode, c = sess.run(
+    #    [y_pred, cost], feed_dict={X: test_features[:examples_to_show]})
     # Compare original images with their reconstructions
+    examples = test_features[:examples_to_show]
+    
     for i in range(examples_to_show):
-        print('\ntesting: ', ', '.join('{0:.3f}'.format(k) for k in test_features[i]))
-        print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[i]))
-    print("\ntest cost=", "{:.9f}\n".format(c))
+        encode_decode, c = sess.run(
+            [y_pred, cost], feed_dict={X: [examples[i]]})
+        print('testing: ', ', '.join('{0:.3f}'.format(k) for k in examples[i]))
+        print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[0]))
+        print("test cost=", "{:.9f}\n".format(c))
 
    
     anormal_features = [
@@ -150,6 +156,6 @@ with tf.Session() as sess:
         [y_pred, cost], feed_dict={X: anormal_features[:examples_to_show]})
     # Compare original images with their reconstructions
     for i in range(len(anormal_features)):
-        print('\nanormal: ', ', '.join('{0:.3f}'.format(k) for k in anormal_features[i]))
+        print('anormal: ', ', '.join('{0:.3f}'.format(k) for k in anormal_features[i]))
         print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[i]))
-        print("\ntest cost=", "{:.9f}\n".format(c))
+        print("test cost=", "{:.9f}\n".format(c))
