@@ -15,7 +15,7 @@ import tensorflow as tf
 import numpy as np
 #import matplotlib.pyplot as plt
 
-import os
+import os, random
 import cPickle as pickle
 
 # Import MINST data
@@ -28,25 +28,28 @@ for line in open('all-20160307.log.feature','r'):
     features.append([float(x) for x in line.replace('[','').replace(']','').replace(',',' ').split()])
 '''
 features = []
-for filename in os.listdir('output/'):
-    features.extend( pickle.load(open('output/'+filename, 'rb')) )
-features = pickle.load(open('output/testInput.log.feature', 'rb'))
+user = 'b00705033'
+for filename in os.listdir('output/'+user+'/'):
+    features.extend( pickle.load(open('output/'+user+'/'+filename, 'rb')) )
+#features = pickle.load(open('output/testInput.log.feature', 'rb'))
 for f in features:
     print(f)
 print(len(features))
 
+random.shuffle(features)
 
 num_examples = int(len(features)*0.9) #1281686
 print('num_examples: ', num_examples)
 train_features = features[:num_examples]
 test_features = features[num_examples:]
+print('test_features:')
 for f in test_features: print(f)
 # Parameters
 learning_rate = 0.01
 training_epochs = 2000
 #training_epochs = 2000
 #batch_size = 256
-batch_size = 20
+batch_size = int(num_examples/10)
 display_step = 100
 #examples_to_show = 1 
 examples_to_show = len(test_features) 

@@ -208,10 +208,10 @@ def doWork(rawlog_list):
     }
     es.index(index='ai2',doc_type='data', id=user, body=doc, refresh=True, ignore=[400])
     '''
-    print time 
-    if user != 'r04921039':
-        return  
-            
+    #if user != 'r04921039':
+    #    return  
+    
+    print date, time, user, service 
     # save log into elasticsearch and refresh elasticsearch
     es = Elasticsearch()
     id_str = date+'T'+time+'_'+user+'_'+service 
@@ -234,6 +234,16 @@ def doWork_mp(args):
         #logging.exception("f(%r) failed" % (args,))
         pass
 
+def getViolationList():
+    user_list = []
+    inputFile = codecs.open('rawlog/violation-201606.txt')
+    rawlog_lists = csv.reader(inputFile)
+    for rawlog_list in rawlog_lists:
+        user = rawlog_list[3]
+        if user not in user_list:
+            user_list.append(user)
+    return user_list
+
 def dategenerator(start, end):
     current = start
     while current <= end:
@@ -247,15 +257,18 @@ if __name__ == '__main__':
     es = Elasticsearch()
     #es.indices.delete(index='ai2',ignore=[400,404])
     Record.init()
+
+    violationList = getViolationList()
+    print len(violationList)
     
     path = 'rawlog/'
     start_date = date(2016,6,1)
-    end_date = date(2016,6,1)
+    end_date = date(2016,6,30)
     
     #for filename in os.listdir(path):
     for d in dategenerator(start_date, end_date):
-        filename = 'testInput.log'
-        #filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
+        #filename = 'testInput.log'
+        filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
         print 'Processing ',filename, ' ...'
         
         #inputFile = open('rawlog/testInput.log', 'rb') 
@@ -264,19 +277,25 @@ if __name__ == '__main__':
         rawlog_lists = sorted(rawlog_lists, key =itemgetter(2))
         #for l in rawlog_lists: print l
         
-       
-        # multiprocess  
-        pool = Pool(processes=24)
-        ''' 
-        output = []
-        results = [pool.apply_async(doWork_mp, args=(rawlog_list,)) for rawlog_list in rawlog_lists]
-        for p in results:
-            result = p.get()
-            if result is not None:
-                output.append(result)
-        #output = [p.get() for p in results]
-        ''' 
-        output = [pool.apply(doWork, args=(rawlog_list,)) for rawlog_list in rawlog_lists]
-        #print(output)
-        pickle.dump(output, open('output/'+filename+'.feature', 'wb'))
-    del Record
+        for violationUser in violationList: 
+            output = []
+            for rawlog_list in rawlog_lists:
+                if violationUser == rawlog_list[3]:
+                    features = doWork(rawlog_list)
+                    if features is not None:
+                        output.append(features)
+            if not os.path.exists('output/'+violationUser):
+                os.makedirs('output/'+violationUser)
+            pickle.dump(output, open('output/'+violationUser+'/'+filename+'.feature', 'wb'))
+
+
+            '''
+            # multiprocess  
+            pool = Pool(processes=24)
+            output = [pool.apply(doWork, args=(rawlog_list,violationUser)) for rawlog_list in rawlog_lists]
+            #print(output)
+            pickle.dump(output, open('output/'+violationUser+'_'+filename+'.feature', 'wb'))
+            pool.close()
+            pool.join()
+            '''
+    #del Record
