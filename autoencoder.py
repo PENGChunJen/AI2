@@ -73,8 +73,8 @@ print('violation_features:', len(violation_features))
 
 # Parameters
 learning_rate = 0.01
-training_epochs = 2000
-#training_epochs = 5000
+#training_epochs = 2000
+training_epochs = 5000
 #batch_size = 256
 batch_size = int(num_examples/10)
 display_step = 100
@@ -190,13 +190,13 @@ with tf.Session() as sess:
             normal_avg_cost += c
     
     print('for testing features:') 
-    print('False Positive:', abnormal, ', cost = ', anormal_avg_cost/anormal)
+    print('False Positive:', abnormal, ', cost = ', abnormal_avg_cost/abnormal)
     print('        Normal:', normal, ', cost = ', normal_avg_cost/normal)
     
     print('\nFalse Positive (Could be a threat!)')  
     with open('output/falsePositive', 'wb') as outFile: 
         for k, v in sorted(falsePositive.items(), key=operator.itemgetter(1), reverse=True):
-            #print('score:',v, k)
+            print('score:',v, k)
             outFile.write('score: '+str(v)+' '+str(k)+'\n')
         #json.dump(sorted(falsePositive), outFile, ensure_ascii=False, indent=4) 
 
@@ -231,7 +231,7 @@ with tf.Session() as sess:
     print('\nFalse Negative (Should be normal logs!)')  
     with open('output/falseNegative', 'wb') as outFile: 
         for k, v in sorted(falseNegative.items(), key=operator.itemgetter(1)):
-            #print('score:',v, k)
+            print('score:',v, k)
             outFile.write('score: '+str(v)+' '+str(k)+'\n')
 
 
