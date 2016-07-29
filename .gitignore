@@ -2,3 +2,5 @@ rawlog
 output
 data
 *.swp
+*.pyc
+cmd.log

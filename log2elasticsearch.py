@@ -133,7 +133,9 @@ def countPastLogMean(rawlog_list):
 def checkIsNewItem(List, item):
     if item in List:
         return 0.0
-    List.append(item)
+    if ADD_DATA:
+        print 'ADD_DATA'
+        List.append(item)
     return 1.0
 
 def generateFeatures(rawlog_list):
@@ -213,19 +215,22 @@ def doWork(rawlog_list):
     
     print date, time, user, service 
     # save log into elasticsearch and refresh elasticsearch
-    es = Elasticsearch()
-    id_str = date+'T'+time+'_'+user+'_'+service 
-    newRecord(rawlog_list, id_str)
-    res = es.indices.refresh(index='ai2') 
+    if ADD_RECORD:
+        print 'ADD_RECORD'
+        es = Elasticsearch()
+        id_str = date+'T'+time+'_'+user+'_'+service 
+        newRecord(rawlog_list, id_str)
+        res = es.indices.refresh(index='ai2') 
    
     # features = [past1daysMean, past3daysMean, past7daysMean, newDevice, newIp, newCity, newCounty, newNation]
     features = generateFeatures(rawlog_list)
-    #print rawlog2json(rawlog_list)
-    #print features
+    print rawlog2json(rawlog_list)
+    print features
     #print >> outFile, features
-    del es
-    if features is not None: 
-        return features
+    return features
+    #del es
+    #if features is not None: 
+    #    return features
 
 def doWork_mp(args):
     try:
@@ -262,13 +267,28 @@ if __name__ == '__main__':
     print len(violationList)
     
     path = 'rawlog/'
+    ''' 
+    #filename = 'testInput.log'
+    filename = 'violation-201606.txt'
+    ADD_RECORD = False
+    ADD_DATA = False
+    inputFile = codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') 
+    rawlog_lists = csv.reader(inputFile)
+    rawlog_lists = sorted(rawlog_lists, key =itemgetter(2))
+    output = []
+    for rawlog_list in rawlog_lists:
+        feature = doWork(rawlog_list)
+        output.append((feature, rawlog_list))
+    pickle.dump(output, open('output/'+filename+'.feature', 'wb')
+    '''
     start_date = date(2016,6,1)
-    end_date = date(2016,6,30)
-    
-    #for filename in os.listdir(path):
+    end_date = date(2016,6,1)
+    ##for filename in os.listdir(path):
     for d in dategenerator(start_date, end_date):
-        #filename = 'testInput.log'
         filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
+        ADD_RECORD = True
+        ADD_DATA = True
+        
         print 'Processing ',filename, ' ...'
         
         #inputFile = open('rawlog/testInput.log', 'rb') 
@@ -283,10 +303,11 @@ if __name__ == '__main__':
                 if violationUser == rawlog_list[3]:
                     features = doWork(rawlog_list)
                     if features is not None:
-                        output.append(features)
-            if not os.path.exists('output/'+violationUser):
-                os.makedirs('output/'+violationUser)
-            pickle.dump(output, open('output/'+violationUser+'/'+filename+'.feature', 'wb'))
+                        output.append((features, rawlog_list))
+            outputPath = 'output/'+violationUser+'/'
+            if not os.path.exists(outputPath):
+                os.makedirs(outputPath)
+            pickle.dump(output, open(outputPath+filename+'.feature', 'wb'))
 
 
             '''

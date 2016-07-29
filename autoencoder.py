@@ -21,29 +21,42 @@ import cPickle as pickle
 # Import MINST data
 #from tensorflow.examples.tutorials.mnist import input_data
 #mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
-'''
-features = [] 
-for line in open('all-20160307.log.feature','r'):
-    #print([float(x) for x in line.replace('[','').replace(']','').replace(',',' ').split()])
-    features.append([float(x) for x in line.replace('[','').replace(']','').replace(',',' ').split()])
-'''
-features = []
-user = 'b00705033'
-for filename in os.listdir('output/'+user+'/'):
-    features.extend( pickle.load(open('output/'+user+'/'+filename, 'rb')) )
+
+
+
 #features = pickle.load(open('output/testInput.log.feature', 'rb'))
-for f in features:
-    print(f)
-print(len(features))
+#for f in features: print(f)
+
+'''
+user = 'b00606012'
+path = 'data/output_only_features/'+user+'/'
+features = []
+for filename in os.listdir(path):
+    features.extend( pickle.load(open(path+filename, 'rb')) )
+print('user:', user)
+'''
+
+from log2elasticsearch import getViolationList
+violationUsers = getViolationList()
+features = []
+for user in violationUsers:
+    path = 'data/output_only_features_without_first7Days/'+user+'/'
+    for filename in os.listdir(path):
+        features.extend( pickle.load(open(path+filename, 'rb')) )
+
+
 
 random.shuffle(features)
 
 num_examples = int(len(features)*0.9) #1281686
-print('num_examples: ', num_examples)
 train_features = features[:num_examples]
 test_features = features[num_examples:]
-print('test_features:')
-for f in test_features: print(f)
+#for f in test_features: print(f)
+
+print('total features:', len(features))
+print('num_examples  :', num_examples)
+print('test_features :', len(test_features))
+
 # Parameters
 learning_rate = 0.01
 training_epochs = 2000
@@ -52,7 +65,7 @@ training_epochs = 2000
 batch_size = int(num_examples/10)
 display_step = 100
 #examples_to_show = 1 
-examples_to_show = len(test_features) 
+examples_to_show = len(test_features) if len(test_features) <= 5 else 5 
 
 # Network Parameters
 n_input = 8 # MNIST data input (img shape: 28*28)
@@ -137,17 +150,39 @@ with tf.Session() as sess:
     print("Optimization Finished!")
 
     # Applying encode and decode over test set
-    #encode_decode, c = sess.run(
-    #    [y_pred, cost], feed_dict={X: test_features[:examples_to_show]})
+    encode_decode, test_cost = sess.run(
+        [y_pred, cost], feed_dict={X: test_features[:examples_to_show]})
+    print("\ntesting features avg cost =", "{:.9f}\n".format(test_cost))
+    
     # Compare original images with their reconstructions
     examples = test_features[:examples_to_show]
-    
     for i in range(examples_to_show):
         encode_decode, c = sess.run(
             [y_pred, cost], feed_dict={X: [examples[i]]})
         print('testing: ', ', '.join('{0:.3f}'.format(k) for k in examples[i]))
         print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[0]))
-        print("test cost=", "{:.9f}\n".format(c))
+        print("cost =", "{:.9f}\n".format(c))
+
+
+    examples = test_features
+    anormal = normal = 0
+    anormal_avg_cost = normal_avg_cost = 0.0
+    for i in range(len(examples)-1):
+        encode_decode, c = sess.run(
+            [y_pred, cost], feed_dict={X: [examples[i]]})
+        if c > test_cost:
+            anormal += 1
+            anormal_avg_cost += c
+            #print('testing: ', ', '.join('{0:.3f}'.format(k) for k in examples[i]))
+            #print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[0]))
+            #print("cost =", "{:.9f}\n".format(c))
+        else:
+            normal += 1
+            normal_avg_cost += c
+    
+    print('anormal:', anormal, ', cost = ', anormal_avg_cost/anormal)
+    print('normal :', normal, ', cost = ', normal_avg_cost/normal)
+
 
    
     anormal_features = [
@@ -161,4 +196,4 @@ with tf.Session() as sess:
     for i in range(len(anormal_features)):
         print('anormal: ', ', '.join('{0:.3f}'.format(k) for k in anormal_features[i]))
         print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[i]))
-        print("test cost=", "{:.9f}\n".format(c))
+        print("cost =", "{:.9f}\n".format(c))
