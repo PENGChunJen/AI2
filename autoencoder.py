@@ -1,4 +1,4 @@
-#s -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 """ Auto Encoder Example.
 Using an auto encoder on MNIST handwritten digits.
@@ -15,7 +15,7 @@ import tensorflow as tf
 import numpy as np
 #import matplotlib.pyplot as plt
 
-import os, random
+import os, random, json, operator
 import cPickle as pickle
 
 # Import MINST data
@@ -38,20 +38,27 @@ print('user:', user)
 
 from log2elasticsearch import getViolationList
 violationUsers = getViolationList()
-features = []
+log_pairs = []
 for user in violationUsers:
-    path = 'data/output_only_features_without_first7Days/'+user+'/'
+    path = 'output/'+user+'/'
     for filename in os.listdir(path):
-        features.extend( pickle.load(open(path+filename, 'rb')) )
+        log_pairs.extend( pickle.load(open(path+filename, 'rb')))
+log_dict = {str(p[0]): p[1] for p in log_pairs}
+
+features = [ p[0] for p in log_pairs ]
+#features = []
+#for p in log_pairs:
+#    if p[0] is not None:
+#        features.append(p[0]) 
 
 num_examples = int(len(features)*0.9) #1281686
 random.shuffle(features)
 train_features = features[:num_examples]
 test_features = features[num_examples:]
-print('test_features[0]:', test_features[0])
 #for f in test_features: print(f)
 
 violation_pairs = pickle.load(open('data/violation-201606.txt.feature'))
+violation_dict = {str(p[0]): p[1] for p in violation_pairs}
 #violation_features = [v[0] for v in violation_pairs]
 violation_features = []
 for v in violation_pairs:
@@ -66,8 +73,8 @@ print('violation_features:', len(violation_features))
 
 # Parameters
 learning_rate = 0.01
-#training_epochs = 2000
 training_epochs = 2000
+#training_epochs = 5000
 #batch_size = 256
 batch_size = int(num_examples/10)
 display_step = 100
@@ -165,23 +172,33 @@ with tf.Session() as sess:
     print("\ntesting features avg cost =", "{:.9f}\n".format(test_cost))
     
     examples = test_features
-    anormal = normal = 0
-    anormal_avg_cost = normal_avg_cost = 0.0
+    abnormal = normal = 0
+    abnormal_avg_cost = normal_avg_cost = 0.0
+    falsePositive = {}
     for i in range(len(examples)-1):
         encode_decode, c = sess.run(
             [y_pred, cost], feed_dict={X: [examples[i]]})
         if c > test_cost:
-            anormal += 1
-            anormal_avg_cost += c
+            abnormal += 1
+            abnormal_avg_cost += c
+            falsePositive[ repr( log_dict[str(examples[i])] ) ] = c
             #print('testing: ', ', '.join('{0:.3f}'.format(k) for k in examples[i]))
             #print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[0]))
             #print("cost =", "{:.9f}\n".format(c))
         else:
             normal += 1
             normal_avg_cost += c
+    
     print('for testing features:') 
-    print('anormal:', anormal, ', cost = ', anormal_avg_cost/anormal)
-    print('normal :', normal, ', cost = ', normal_avg_cost/normal)
+    print('False Positive:', abnormal, ', cost = ', anormal_avg_cost/anormal)
+    print('        Normal:', normal, ', cost = ', normal_avg_cost/normal)
+    
+    print('\nFalse Positive (Could be a threat!)')  
+    with open('output/falsePositive', 'wb') as outFile: 
+        for k, v in sorted(falsePositive.items(), key=operator.itemgetter(1), reverse=True):
+            #print('score:',v, k)
+            outFile.write('score: '+str(v)+' '+str(k)+'\n')
+        #json.dump(sorted(falsePositive), outFile, ensure_ascii=False, indent=4) 
 
 
 
@@ -191,28 +208,36 @@ with tf.Session() as sess:
     print("\nviolation features avg cost =", "{:.9f}\n".format(violation_cost))
 
     examples = violation_features
-    anormal = normal = 0
-    anormal_avg_cost = normal_avg_cost = 0.0
+    abnormal = normal = 0
+    abnormal_avg_cost = normal_avg_cost = 0.0
+    falseNegative = {}
     for i in range(len(examples)-1):
         encode_decode, c = sess.run(
             [y_pred, cost], feed_dict={X: [examples[i]]})
         if c > test_cost:
-            anormal += 1
-            anormal_avg_cost += c
+            abnormal += 1
+            abnormal_avg_cost += c
             #print('testing: ', ', '.join('{0:.3f}'.format(k) for k in examples[i]))
             #print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[0]))
             #print("cost =", "{:.9f}\n".format(c))
         else:
+            falseNegative[ repr( violation_dict[str(examples[i])] ) ] = c
             normal += 1
             normal_avg_cost += c
     print('for violation features:') 
-    print('anormal:', anormal, ', cost = ', anormal_avg_cost)
-    print('normal :', normal, ', cost = ', normal_avg_cost)
+    print('abnormal:', abnormal, ', cost = ', abnormal_avg_cost/abnormal)
+    print('normal :', normal, ', cost = ', normal_avg_cost/normal)
+    
+    print('\nFalse Negative (Should be normal logs!)')  
+    with open('output/falseNegative', 'wb') as outFile: 
+        for k, v in sorted(falseNegative.items(), key=operator.itemgetter(1)):
+            #print('score:',v, k)
+            outFile.write('score: '+str(v)+' '+str(k)+'\n')
 
 
-    SHOW_EXAMPLE = True 
-    print('\nEXAMPLES:\n')
+    SHOW_EXAMPLE = False 
     if SHOW_EXAMPLE:     
+        print('\nEXAMPLES:\n')
         # Compare original images with their reconstructions
         examples = test_features[:examples_to_show]
         for i in range(examples_to_show):
@@ -227,6 +252,6 @@ with tf.Session() as sess:
         for i in range(examples_to_show):
             encode_decode, c = sess.run(
                 [y_pred, cost], feed_dict={X: [examples[i]]})
-            print('anormal: ', ', '.join('{0:.3f}'.format(k) for k in violation_features[i]))
+            print('abnormal: ', ', '.join('{0:.3f}'.format(k) for k in violation_features[i]))
             print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[0]))
             print("cost =", "{:.9f}\n".format(c))

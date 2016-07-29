@@ -134,7 +134,7 @@ def checkIsNewItem(List, item):
     if item in List:
         return 0.0
     if ADD_DATA:
-        print 'ADD_DATA'
+        #print 'ADD_DATA'
         List.append(item)
     return 1.0
 
@@ -216,7 +216,7 @@ def doWork(rawlog_list):
     print date, time, user, service 
     # save log into elasticsearch and refresh elasticsearch
     if ADD_RECORD:
-        print 'ADD_RECORD'
+        #print 'ADD_RECORD'
         es = Elasticsearch()
         id_str = date+'T'+time+'_'+user+'_'+service 
         newRecord(rawlog_list, id_str)
@@ -224,8 +224,8 @@ def doWork(rawlog_list):
    
     # features = [past1daysMean, past3daysMean, past7daysMean, newDevice, newIp, newCity, newCounty, newNation]
     features = generateFeatures(rawlog_list)
-    print rawlog2json(rawlog_list)
-    print features
+    #print rawlog2json(rawlog_list)
+    #print features
     #print >> outFile, features
     return features
     #del es
@@ -266,7 +266,7 @@ if __name__ == '__main__':
     violationList = getViolationList()
 
     path = 'rawlog/'
-    TEST = True 
+    TEST = False 
     if TEST:
         #filename = 'testInput.log'
         filename = 'violation-201606.txt'
@@ -283,7 +283,7 @@ if __name__ == '__main__':
         pickle.dump(output, open('output/'+filename+'.feature', 'wb'))
     else: 
         start_date = date(2016,6,1)
-        end_date = date(2016,6,1)
+        end_date = date(2016,6,30)
         ##for filename in os.listdir(path):
         for d in dategenerator(start_date, end_date):
             filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
