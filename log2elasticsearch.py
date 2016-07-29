@@ -264,59 +264,59 @@ if __name__ == '__main__':
     Record.init()
 
     violationList = getViolationList()
-    print len(violationList)
-    
+
     path = 'rawlog/'
-    ''' 
-    #filename = 'testInput.log'
-    filename = 'violation-201606.txt'
-    ADD_RECORD = False
-    ADD_DATA = False
-    inputFile = codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') 
-    rawlog_lists = csv.reader(inputFile)
-    rawlog_lists = sorted(rawlog_lists, key =itemgetter(2))
-    output = []
-    for rawlog_list in rawlog_lists:
-        feature = doWork(rawlog_list)
-        output.append((feature, rawlog_list))
-    pickle.dump(output, open('output/'+filename+'.feature', 'wb')
-    '''
-    start_date = date(2016,6,1)
-    end_date = date(2016,6,1)
-    ##for filename in os.listdir(path):
-    for d in dategenerator(start_date, end_date):
-        filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
-        ADD_RECORD = True
-        ADD_DATA = True
-        
-        print 'Processing ',filename, ' ...'
-        
-        #inputFile = open('rawlog/testInput.log', 'rb') 
+    TEST = True 
+    if TEST:
+        #filename = 'testInput.log'
+        filename = 'violation-201606.txt'
+        ADD_RECORD = False 
+        ADD_DATA = False 
         inputFile = codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') 
         rawlog_lists = csv.reader(inputFile)
         rawlog_lists = sorted(rawlog_lists, key =itemgetter(2))
-        #for l in rawlog_lists: print l
-        
-        for violationUser in violationList: 
-            output = []
-            for rawlog_list in rawlog_lists:
-                if violationUser == rawlog_list[3]:
-                    features = doWork(rawlog_list)
-                    if features is not None:
-                        output.append((features, rawlog_list))
-            outputPath = 'output/'+violationUser+'/'
-            if not os.path.exists(outputPath):
-                os.makedirs(outputPath)
-            pickle.dump(output, open(outputPath+filename+'.feature', 'wb'))
-
-
-            '''
-            # multiprocess  
-            pool = Pool(processes=24)
-            output = [pool.apply(doWork, args=(rawlog_list,violationUser)) for rawlog_list in rawlog_lists]
-            #print(output)
-            pickle.dump(output, open('output/'+violationUser+'_'+filename+'.feature', 'wb'))
-            pool.close()
-            pool.join()
-            '''
-    #del Record
+        output = []
+        for rawlog_list in rawlog_lists:
+            feature = doWork(rawlog_list)
+            if feature is not None:
+                output.append((feature, rawlog_list))
+        pickle.dump(output, open('output/'+filename+'.feature', 'wb'))
+    else: 
+        start_date = date(2016,6,1)
+        end_date = date(2016,6,1)
+        ##for filename in os.listdir(path):
+        for d in dategenerator(start_date, end_date):
+            filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
+            ADD_RECORD = True 
+            ADD_DATA = True 
+            
+            print 'Processing ',filename, ' ...'
+            
+            #inputFile = open('rawlog/testInput.log', 'rb') 
+            inputFile = codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') 
+            rawlog_lists = csv.reader(inputFile)
+            rawlog_lists = sorted(rawlog_lists, key =itemgetter(2))
+            #for l in rawlog_lists: print l
+            
+            for violationUser in violationList: 
+                output = []
+                for rawlog_list in rawlog_lists:
+                    if violationUser == rawlog_list[3]:
+                        features = doWork(rawlog_list)
+                        if features is not None:
+                            output.append((features, rawlog_list))
+                outputPath = 'output/'+violationUser+'/'
+                if not os.path.exists(outputPath):
+                    os.makedirs(outputPath)
+                pickle.dump(output, open(outputPath+filename+'.feature', 'wb'))
+    
+                '''
+                # multiprocess  
+                pool = Pool(processes=24)
+                output = [pool.apply(doWork, args=(rawlog_list,violationUser)) for rawlog_list in rawlog_lists]
+                #print(output)
+                pickle.dump(output, open('output/'+violationUser+'_'+filename+'.feature', 'wb'))
+                pool.close()
+                pool.join()
+                '''
+        #del Record
