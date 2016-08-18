@@ -1,8 +1,11 @@
-import os, logging, json, csv, pickle
+import time, os, logging, json, csv, pickle
 import collections, codecs
 from operator import itemgetter 
 from datetime import date, datetime, timedelta
-from multiprocessing import Process, Queue, Pool
+import multiprocessing
+#from multiprocessing import Process, Queue, Pool
+import progressbar as pb
+#from progressbar import ProgressBar, SimpleProgress
 
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Index, DocType, String, Date, Integer, Boolean
@@ -213,7 +216,6 @@ def doWork(rawlog_list):
     #if user != 'r04921039':
     #    return  
     
-    print date, time, user, service 
     # save log into elasticsearch and refresh elasticsearch
     if ADD_RECORD:
         #print 'ADD_RECORD'
@@ -227,6 +229,7 @@ def doWork(rawlog_list):
     #print rawlog2json(rawlog_list)
     #print features
     #print >> outFile, features
+    #print date, time, user, service 
     return features
     #del es
     #if features is not None: 
@@ -255,32 +258,122 @@ def dategenerator(start, end):
         yield current
         current += timedelta(days=1)
 
+def doJob(rawlog_lists):
+    es = Elasticsearch(['localhost:9200'])
+    Record.init()
+    pair_list = []
+    for rawlog_list in rawlog_lists:
+        feature = doWork(rawlog_list) 
+        pair_list.append((rawlog_list, feature))
+    #print 'Generating features for ', rawlog_lists[0][3] 
+    #finished = finished + 1
+    return pair_list
+
+def split_by_user(rawlog_lists):
+    job_dict = {} # [rawlog_lists split by users]
+    for rawlog_list in rawlog_lists:
+        user = rawlog_list[3]
+        if user not in job_dict:
+            job_dict[user] = [rawlog_list]
+        else:
+            job_dict[user].append(rawlog_list)
+    return job_dict
+def start_process():
+    print 'Starting', multiprocessing.current_process().name
+
 if __name__ == '__main__':
     # Define a defualt Elasticsearch client
     client = connections.create_connection(hosts=['localhost:9200'])
     
-    es = Elasticsearch()
+    
+    #es = Elasticsearch()
     #es.indices.delete(index='ai2',ignore=[400,404])
-    Record.init()
+    #es.indices.create(index='ai2',ignore=[400])
+    #Record.init()
 
     violationList = getViolationList()
 
     path = 'rawlog/'
-    TEST = False 
+    TEST = True
     if TEST:
-        #filename = 'testInput.log'
-        filename = 'violation-201606.txt'
-        ADD_RECORD = False 
-        ADD_DATA = False 
+        ADD_RECORD = True 
+        ADD_DATA = True 
+        
+        filename = 'testInput.log'
+        #filename = 'violation-201606.txt'
+        #filename = 'all-20160601-geo.log'
+        
+        print 'Reading', filename, '...'
         inputFile = codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') 
         rawlog_lists = csv.reader(inputFile)
-        rawlog_lists = sorted(rawlog_lists, key =itemgetter(2))
+       
+        print 'Sorting raw logs by time ...'
+        rawlog_lists = sorted(rawlog_lists, key =itemgetter(2)) #sorted by time
+        job_dict = split_by_user(rawlog_lists)
+        job_list = []
+        for user in sorted(job_dict):
+            if user is not "":                       # CAUTION!!! Missing some logs
+                job_list.append( job_dict[user] )
+        
+        start_time = time.time()
+        
+        #results = [ doJob(job) for job in job_list ]
+
+        print 'cpu_count:',multiprocessing.cpu_count()
+        #pool_size = 400 
+        pool_size = multiprocessing.cpu_count()
+        pool = multiprocessing.Pool(processes = pool_size, initializer = start_process)
+        #results = [ pool.apply_async(doJob, args=(job, )) for job in job_list]
+        results = pool.map_async(doJob, job_list, chunksize=1)
+        pool.close()
+        #pool.join()
+        '''
+        while (True):
+            if(results.ready()): break
+            time.sleep(0.5)
+        '''
+        total = len(job_list)
+        print '\nTotal number of logs:', len(rawlog_lists), ', Number of jobs:', total
+        widgets=['Finished ', pb.SimpleProgress(),' jobs(', pb.Percentage(),') (', pb.Timer(), ')', pb.Bar('|','[',']'),'(', pb.ETA(),')']
+        pbar = pb.ProgressBar(widgets=widgets, maxval=total).start()
+        while (True):
+            if(results.ready()): break
+            remaining = results._number_left
+            #print "Waiting for", remaining, "tasks to complete..."
+            pbar.update(total-remaining)
+            time.sleep(0.5)
+        pbar.finish()
+
+        #print results.get()
+
+        print("--- %s seconds ---" % (time.time()-start_time))
+        #pickle.dump(output, open('output/'+filename+'.feature', 'wb'))
+        '''
+        results = [ pool.apply_async(doJob, args=(job, )) for job in job_list]
+        for result in results:
+            try:
+                print result.get()
+            except TimeoutError:
+                print "We got a multiprocessing.TimeoutError"
+        '''
+
+        ''' 
         output = []
         for rawlog_list in rawlog_lists:
             feature = doWork(rawlog_list)
             if feature is not None:
                 output.append((feature, rawlog_list))
         pickle.dump(output, open('output/'+filename+'.feature', 'wb'))
+        '''
+        '''
+        # multiprocess  
+        pool = Pool(processes=24)
+        output = [pool.apply(doWork, args=(rawlog_list,violationUser)) for rawlog_list in rawlog_lists]
+        #print(output)
+        pickle.dump(output, open('output/'+violationUser+'_'+filename+'.feature', 'wb'))
+        pool.close()
+        pool.join()
+        '''
     else: 
         start_date = date(2016,6,1)
         end_date = date(2016,6,30)
@@ -310,13 +403,4 @@ if __name__ == '__main__':
                     os.makedirs(outputPath)
                 pickle.dump(output, open(outputPath+filename+'.feature', 'wb'))
     
-                '''
-                # multiprocess  
-                pool = Pool(processes=24)
-                output = [pool.apply(doWork, args=(rawlog_list,violationUser)) for rawlog_list in rawlog_lists]
-                #print(output)
-                pickle.dump(output, open('output/'+violationUser+'_'+filename+'.feature', 'wb'))
-                pool.close()
-                pool.join()
-                '''
         #del Record

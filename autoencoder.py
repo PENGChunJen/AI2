@@ -40,7 +40,7 @@ from log2elasticsearch import getViolationList
 violationUsers = getViolationList()
 log_pairs = []
 for user in violationUsers:
-    path = 'output/'+user+'/'
+    path = 'data/output_FP_FN_without_first7Days/'+user+'/'
     for filename in os.listdir(path):
         log_pairs.extend( pickle.load(open(path+filename, 'rb')))
 log_dict = {str(p[0]): p[1] for p in log_pairs}
@@ -75,8 +75,8 @@ print('violation_features:', len(violation_features))
 learning_rate = 0.01
 #training_epochs = 2000
 training_epochs = 5000
-#batch_size = 256
-batch_size = int(num_examples/10)
+batch_size = 256
+#batch_size = int(num_examples/10)
 display_step = 100
 #examples_to_show = 1 
 examples_to_show = len(test_features) if len(test_features) <= 5 else 5 
