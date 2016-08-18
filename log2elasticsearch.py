@@ -229,8 +229,8 @@ if __name__ == '__main__':
     TEST = True
     if TEST:
         ADD_RECORD = True 
-        ADD_DATA = False 
-        ADD_FEATURES = False 
+        ADD_DATA = True 
+        ADD_FEATURES = True 
         
         filename = 'testInput.log'
         #filename = 'violation-201606.txt'
