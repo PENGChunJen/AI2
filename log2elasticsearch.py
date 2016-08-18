@@ -3,9 +3,7 @@ import collections, codecs
 from operator import itemgetter 
 from datetime import date, datetime, timedelta
 import multiprocessing
-#from multiprocessing import Process, Queue, Pool
 import progressbar as pb
-#from progressbar import ProgressBar, SimpleProgress
 
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Index, DocType, String, Date, Integer, Boolean
@@ -27,18 +25,14 @@ class Record(DocType):
     class Meta:
         index = 'ai2'
         doc_type = 'log'
-
     def save(self, *args, **kwargs):
         return super(Record, self).save(*args, **kwargs)
-
 
 def newRecord(rawlog_list, id_num):
     #record = Record() 
     record = Record(meta={'id': id_num}) 
     record.service = rawlog_list[0]
     record.time    = datetime.strptime(rawlog_list[1]+'T'+rawlog_list[2], '%Y-%m-%dT%H:%M:%S')
-    #record.date   = rawlog_list[1]
-    #record.time   = rawlog_list[2]
     record.user    = rawlog_list[3]
     record.server  = rawlog_list[4]
     record.ip      = rawlog_list[5]
@@ -46,10 +40,7 @@ def newRecord(rawlog_list, id_num):
     record.city    = rawlog_list[7]
     record.county  = rawlog_list[8]
     record.nation  = rawlog_list[9]
-    try: 
-        record.save()
-    except KeyError:
-        pass
+    record.save()
 
 def rawlog2json(rawlog_list):
     data = collections.OrderedDict([
@@ -85,59 +76,23 @@ def countPastLogMean(rawlog_list):
     s = Search(using=client, index="ai2", doc_type="log")
     
     s = s.filter('range', **{'time':{'from':past7days, 'to':timestamp}}).query(q)
-    #s.aggs.bucket('distinct_device', 'terms', field='device')
-    #s.aggs.bucket('distinct_ip', 'terms', field='ip')
     response = s.execute()
-    try: 
-        past7daysCount = response.hits.total
-    except KeyError:
-        past7daysCount = response.hits.total 
-    #print json.dumps(response, indent=4)
-    #print 'past7days:',past7daysCount 
-    #for item in response.hits:
-    #    print item.time
-        #print json.dumps(item.to_dict(), indent=4)
- 
-    #distinctDevice = len(response.aggregations.distinct_device.buckets)
-    #print 'number of device:', len(response.aggregations.distinct_device.buckets)
-    #for device in response.aggregations.distinct_device.buckets:
-    #    print 'distince_device:', device.key, device.doc_count
-    #distinctIp = len(response.aggregations.distinct_ip.buckets)
-    #print 'number of ips:', len(response.aggregations.distinct_ip.buckets)
-    #for ip in response.aggregations.distinct_ip.buckets:
-    #    print 'distince_ip:', ip.key, ip.doc_count
-
+    past7daysCount = response.hits.total
+    
     s = s.filter('range', **{'time':{'from':past3days, 'to':justnow}})
     response = s.execute()
-    try: 
-        past3daysCount = response.hits.total
-    except KeyError:
-        past3daysCount = response.hits.total
-    #past3daysCount = 0 if not response['found'] else response.hits.total
-    #print 'past3days', response.hits.total
-    #for item in response.hits:
-    #    print item.time
-        #print json.dumps(item.to_dict(), indent=4)
+    past3daysCount = response.hits.total
 
     s = s.filter('range', **{'time':{'from':past1days, 'to':justnow}})
     response = s.execute()
-    try: 
-        past1daysCount = response.hits.total
-    except KeyError:
-        past1daysCount = response.hits.total
-    #print 'past1days', response.hits.total
-    #for item in response.hits:
-    #    print item.time
-        #print json.dumps(item.to_dict(), indent=4)
-
-    #return [ past1daysCount, past3daysCount/3.0, past7daysCount/7.0, distinctDevice, distinctIp ]
+    past1daysCount = response.hits.total
+    
     return past1daysCount, past3daysCount/3.0, past7daysCount/7.0
 
 def checkIsNewItem(List, item):
     if item in List:
         return 0.0
     if ADD_DATA:
-        #print 'ADD_DATA'
         List.append(item)
     return 1.0
 
@@ -165,7 +120,8 @@ def generateFeatures(rawlog_list):
             'county':[county],
             'nation':[nation]
         }
-        res = es.index(index='ai2',doc_type='data', id=user, body=doc)
+        if ADD_DATA:
+            res = es.index(index='ai2',doc_type='data', id=user, body=doc)
         newDevice = newIp = newCity = newCounty = newNation = 1.0
     else:
         #print json.dumps(res, indent=4)
@@ -176,7 +132,8 @@ def generateFeatures(rawlog_list):
         newCounty = checkIsNewItem(doc['county'], county) 
         newNation = checkIsNewItem(doc['nation'], nation) 
         #print 'doc', json.dumps(doc, indent=4)
-        res = es.index(index='ai2', doc_type='data', id=user, body=doc, refresh=True)        
+        if ADD_DATA:
+            res = es.index(index='ai2', doc_type='data', id=user, body=doc, refresh=True)        
   
     delta = 0.000001
     #TODO compare with same day(e.g. Monday) of the past 4 weeks 
@@ -203,44 +160,31 @@ def doWork(rawlog_list):
     city    = rawlog_list[7]
     county  = rawlog_list[8]
     nation  = rawlog_list[9]
-    ''' 
-    doc = {
-        'device':[device],
-        'ip':[ip],
-        'city':[city],
-        'county':[county],
-        'nation':[nation]
-    }
-    es.index(index='ai2',doc_type='data', id=user, body=doc, refresh=True, ignore=[400])
-    '''
-    #if user != 'r04921039':
-    #    return  
     
     # save log into elasticsearch and refresh elasticsearch
+    es = Elasticsearch(['localhost:9200'])
+    id_str = date+'T'+time+'_'+user+'_'+service 
     if ADD_RECORD:
-        #print 'ADD_RECORD'
-        es = Elasticsearch()
-        id_str = date+'T'+time+'_'+user+'_'+service 
         newRecord(rawlog_list, id_str)
         res = es.indices.refresh(index='ai2') 
    
-    # features = [past1daysMean, past3daysMean, past7daysMean, newDevice, newIp, newCity, newCounty, newNation]
     features = generateFeatures(rawlog_list)
+    
+    if ADD_FEATURES:
+        doc = {
+            'raw_log':repr(rawlog_list),
+            'features':repr(features)
+        }
+        res = es.index(index='ai2', doc_type='features', id=id_str, body=doc, refresh=True)        
+    
     #print rawlog2json(rawlog_list)
     #print features
     #print >> outFile, features
     #print date, time, user, service 
     return features
-    #del es
-    #if features is not None: 
-    #    return features
 
-def doWork_mp(args):
-    try:
-        return doWork(args)
-    except Exception:
-        #logging.exception("f(%r) failed" % (args,))
-        pass
+def doJob(rawlog_lists):
+    return [doWork(rawlog_list) for rawlog_list in rawlog_lists]
 
 def getViolationList():
     user_list = []
@@ -258,37 +202,25 @@ def dategenerator(start, end):
         yield current
         current += timedelta(days=1)
 
-def doJob(rawlog_lists):
-    es = Elasticsearch(['localhost:9200'])
-    Record.init()
-    pair_list = []
-    for rawlog_list in rawlog_lists:
-        feature = doWork(rawlog_list) 
-        pair_list.append((rawlog_list, feature))
-    #print 'Generating features for ', rawlog_lists[0][3] 
-    #finished = finished + 1
-    return pair_list
-
 def split_by_user(rawlog_lists):
     job_dict = {} # [rawlog_lists split by users]
     for rawlog_list in rawlog_lists:
         user = rawlog_list[3]
+        #if user != 'r04921039': continue
         if user not in job_dict:
             job_dict[user] = [rawlog_list]
         else:
             job_dict[user].append(rawlog_list)
     return job_dict
+
 def start_process():
     print 'Starting', multiprocessing.current_process().name
 
 if __name__ == '__main__':
     # Define a defualt Elasticsearch client
     client = connections.create_connection(hosts=['localhost:9200'])
-    
-    
-    #es = Elasticsearch()
-    #es.indices.delete(index='ai2',ignore=[400,404])
-    #es.indices.create(index='ai2',ignore=[400])
+    es = Elasticsearch()
+    es.indices.create(index='ai2',ignore=[400])
     #Record.init()
 
     violationList = getViolationList()
@@ -297,7 +229,8 @@ if __name__ == '__main__':
     TEST = True
     if TEST:
         ADD_RECORD = True 
-        ADD_DATA = True 
+        ADD_DATA = False 
+        ADD_FEATURES = False 
         
         filename = 'testInput.log'
         #filename = 'violation-201606.txt'
@@ -326,12 +259,6 @@ if __name__ == '__main__':
         #results = [ pool.apply_async(doJob, args=(job, )) for job in job_list]
         results = pool.map_async(doJob, job_list, chunksize=1)
         pool.close()
-        #pool.join()
-        '''
-        while (True):
-            if(results.ready()): break
-            time.sleep(0.5)
-        '''
         total = len(job_list)
         print '\nTotal number of logs:', len(rawlog_lists), ', Number of jobs:', total
         widgets=['Finished ', pb.SimpleProgress(),' jobs(', pb.Percentage(),') (', pb.Timer(), ')', pb.Bar('|','[',']'),'(', pb.ETA(),')']
@@ -343,46 +270,21 @@ if __name__ == '__main__':
             pbar.update(total-remaining)
             time.sleep(0.5)
         pbar.finish()
-
         #print results.get()
+        #pool.join()
 
         print("--- %s seconds ---" % (time.time()-start_time))
         #pickle.dump(output, open('output/'+filename+'.feature', 'wb'))
-        '''
-        results = [ pool.apply_async(doJob, args=(job, )) for job in job_list]
-        for result in results:
-            try:
-                print result.get()
-            except TimeoutError:
-                print "We got a multiprocessing.TimeoutError"
-        '''
-
-        ''' 
-        output = []
-        for rawlog_list in rawlog_lists:
-            feature = doWork(rawlog_list)
-            if feature is not None:
-                output.append((feature, rawlog_list))
-        pickle.dump(output, open('output/'+filename+'.feature', 'wb'))
-        '''
-        '''
-        # multiprocess  
-        pool = Pool(processes=24)
-        output = [pool.apply(doWork, args=(rawlog_list,violationUser)) for rawlog_list in rawlog_lists]
-        #print(output)
-        pickle.dump(output, open('output/'+violationUser+'_'+filename+'.feature', 'wb'))
-        pool.close()
-        pool.join()
-        '''
     else: 
+        ADD_RECORD = True 
+        ADD_DATA = True 
+        ADD_FEATURES=True 
+        
         start_date = date(2016,6,1)
         end_date = date(2016,6,30)
         ##for filename in os.listdir(path):
         for d in dategenerator(start_date, end_date):
             filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
-            ADD_RECORD = True 
-            ADD_DATA = True 
-            
             print 'Processing ',filename, ' ...'
             
             #inputFile = open('rawlog/testInput.log', 'rb') 
