@@ -203,10 +203,14 @@ def dategenerator(start, end):
         current += timedelta(days=1)
 
 def split_by_user(rawlog_lists):
+    #services = ['Exchange', 'OWA', 'POP3', 'SMTP', 'VPN']
+    service = 'VPN'
     job_dict = {} # [rawlog_lists split by users]
+    
+    print 'Selecting "'+service+'" logs and Creating jobs...'
     for rawlog_list in rawlog_lists:
+        if rawlog_list[0] != 'VPN': continue
         user = rawlog_list[3]
-        #if user != 'r04921039': continue
         if user not in job_dict:
             job_dict[user] = [rawlog_list]
         else:
@@ -227,8 +231,9 @@ if __name__ == '__main__':
 
     violationList = getViolationList()
 
+    filename_list = []
     path = 'rawlog/'
-    TEST = True
+    TEST = False 
     if TEST:
         ADD_RECORD = True 
         ADD_DATA = True 
@@ -237,13 +242,28 @@ if __name__ == '__main__':
         filename = 'testInput.log'
         #filename = 'violation-201606.txt'
         #filename = 'all-20160601-geo.log'
+        filename_list.append(filename)
+    
+    else:
+        ADD_RECORD = True 
+        ADD_DATA = True 
+        ADD_FEATURES = True 
         
-        print 'Reading', filename, '...'
+        start_date = date(2016,6,1)
+        end_date = date(2016,6,30)
+        ##for filename in os.listdir(path):
+        for d in dategenerator(start_date, end_date):
+            filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
+            filename_list.append(filename)
+    
+    for filename in filename_list:
+        print '\nReading', filename, '...'
         inputFile = codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') 
         rawlog_lists = csv.reader(inputFile)
        
         print 'Sorting raw logs by time ...'
         rawlog_lists = sorted(rawlog_lists, key =itemgetter(2)) #sorted by time
+        print 'Total number of logs:', len(rawlog_lists)
         job_dict = split_by_user(rawlog_lists)
         job_list = []
         for user in sorted(job_dict):
@@ -254,57 +274,32 @@ if __name__ == '__main__':
         
         #results = [ doJob(job) for job in job_list ]
 
-        print 'cpu_count:',multiprocessing.cpu_count()
+        print 'Number of multiprocess Workers(cpu_count):',multiprocessing.cpu_count()
         #pool_size = 48 
         pool_size = multiprocessing.cpu_count()
-        pool = multiprocessing.Pool(processes = pool_size, initializer = start_process)
+        #pool = multiprocessing.Pool(processes = pool_size, initializer = start_process)
+        pool = multiprocessing.Pool(processes = pool_size)
         #results = [ pool.apply_async(doJob, args=(job, )) for job in job_list]
         results = pool.map_async(doJob, job_list, chunksize=1)
         pool.close()
-        total = len(job_list)
-        print '\nTotal number of logs:', len(rawlog_lists), ', Number of jobs:', total
+        
+        total_logs = total_jobs = 0
+        for job in job_list:
+            total_logs = total_logs + len(job)
+        total_jobs = len(job_list)
+        print 'Number of logs:', total_logs, ', Number of jobs (users):', total_jobs
         widgets=['Finished ', pb.SimpleProgress(),' jobs(', pb.Percentage(),') (', pb.Timer(), ')', pb.Bar('|','[',']'),'(', pb.ETA(),')']
-        pbar = pb.ProgressBar(widgets=widgets, maxval=total).start()
+        pbar = pb.ProgressBar(widgets=widgets, maxval=total_jobs).start()
         while (True):
             if(results.ready()): break
             remaining = results._number_left
             #print "Waiting for", remaining, "tasks to complete..."
-            pbar.update(total-remaining)
+            pbar.update(total_jobs-remaining)
             time.sleep(0.5)
         pbar.finish()
         #print results.get()
         #pool.join()
-
-        print("--- %s seconds ---" % (time.time()-start_time))
+        elapsed_time = time.time() - start_time
+        print("--- Total time cost %s seconds ---" % (elapsed_time))
+        print("--- Avg. Process Speed: %f logs/sec ---" % (total_logs/float(elapsed_time)))
         #pickle.dump(output, open('output/'+filename+'.feature', 'wb'))
-    else: 
-        ADD_RECORD = True 
-        ADD_DATA = True 
-        ADD_FEATURES=True 
-        
-        start_date = date(2016,6,1)
-        end_date = date(2016,6,30)
-        ##for filename in os.listdir(path):
-        for d in dategenerator(start_date, end_date):
-            filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
-            print 'Processing ',filename, ' ...'
-            
-            #inputFile = open('rawlog/testInput.log', 'rb') 
-            inputFile = codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') 
-            rawlog_lists = csv.reader(inputFile)
-            rawlog_lists = sorted(rawlog_lists, key =itemgetter(2))
-            #for l in rawlog_lists: print l
-            
-            for violationUser in violationList: 
-                output = []
-                for rawlog_list in rawlog_lists:
-                    if violationUser == rawlog_list[3]:
-                        features = doWork(rawlog_list)
-                        if features is not None:
-                            output.append((features, rawlog_list))
-                outputPath = 'output/'+violationUser+'/'
-                if not os.path.exists(outputPath):
-                    os.makedirs(outputPath)
-                pickle.dump(output, open(outputPath+filename+'.feature', 'wb'))
-    
-        #del Record
