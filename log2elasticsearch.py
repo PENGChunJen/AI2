@@ -110,7 +110,7 @@ def generateFeatures(rawlog_list):
     
     past1daysMean, past3daysMean, past7daysMean = countPastLogMean(rawlog_list)
 
-    es = Elasticsearch()
+    es = Elasticsearch(hosts, maxsize=max_thread)
     res = es.get(index='ai2', doc_type='data', id=user, ignore=[400, 404])
     if not res['found']:
         doc = {
@@ -162,7 +162,7 @@ def doWork(rawlog_list):
     nation  = rawlog_list[9]
     
     # save log into elasticsearch and refresh elasticsearch
-    es = Elasticsearch(['localhost:9200'])
+    es = Elasticsearch(hosts, maxsize=max_thread)
     id_str = date+'T'+time+'_'+user+'_'+service 
     if ADD_RECORD:
         newRecord(rawlog_list, id_str)
@@ -218,8 +218,10 @@ def start_process():
 
 if __name__ == '__main__':
     # Define a defualt Elasticsearch client
-    client = connections.create_connection(hosts=['localhost:9200'])
-    es = Elasticsearch()
+    hosts = ['192.168.1.1:9200','192.168.1.2:9200','192.168.1.3:9200','192.168.1.4:9200','192.168.1.5:9200','192.168.1.6:9200','192.168.1.10:9200']
+    max_thread = 400
+    client = connections.create_connection(hosts=hosts, maxsize=max_thread)
+    es = Elasticsearch(hosts, maxsize=max_thread)
     es.indices.create(index='ai2',ignore=[400])
     #Record.init()
 
@@ -253,7 +255,7 @@ if __name__ == '__main__':
         #results = [ doJob(job) for job in job_list ]
 
         print 'cpu_count:',multiprocessing.cpu_count()
-        #pool_size = 400 
+        #pool_size = 48 
         pool_size = multiprocessing.cpu_count()
         pool = multiprocessing.Pool(processes = pool_size, initializer = start_process)
         #results = [ pool.apply_async(doJob, args=(job, )) for job in job_list]
