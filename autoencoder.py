@@ -39,10 +39,11 @@ print('user:', user)
 from log2elasticsearch import getViolationList
 violationUsers = getViolationList()
 log_pairs = []
-for user in violationUsers:
-    path = 'data/output_FP_FN_without_first7Days/'+user+'/'
-    for filename in os.listdir(path):
-        log_pairs.extend( pickle.load(open(path+filename, 'rb')))
+#for user in violationUsers:
+path = 'data/Exchange_without_first7Days/'
+for filename in os.listdir(path):
+    print('Loading', filename, '...')
+    log_pairs.extend( pickle.load(open(path+filename, 'rb')))
 log_dict = {str(p[0]): p[1] for p in log_pairs}
 
 features = [ p[0] for p in log_pairs ]
@@ -73,11 +74,11 @@ print('violation_features:', len(violation_features))
 
 # Parameters
 learning_rate = 0.01
-#training_epochs = 2000
-training_epochs = 5000
+training_epochs = 200
+#training_epochs = 5000
 batch_size = 256
 #batch_size = int(num_examples/10)
-display_step = 100
+display_step = 10
 #examples_to_show = 1 
 examples_to_show = len(test_features) if len(test_features) <= 5 else 5 
 
@@ -171,13 +172,31 @@ with tf.Session() as sess:
         [y_pred, cost], feed_dict={X: test_features})
     print("\ntesting features avg cost =", "{:.9f}\n".format(test_cost))
     
-    examples = test_features
+    
+    examples = features
     abnormal = normal = 0
     abnormal_avg_cost = normal_avg_cost = 0.0
+    logScore = {}
     falsePositive = {}
+    print("Generating score for all features...")
     for i in range(len(examples)-1):
         encode_decode, c = sess.run(
             [y_pred, cost], feed_dict={X: [examples[i]]})
+        feature_str = 'feature: ['+', '.join('{0:.3f}'.format(k) for k in examples[i])+']'
+        rebuild_str = 'rebuild: ['+', '.join('{0:.3f}'.format(k) for k in encode_decode[0])+']'
+        data_str = repr(log_dict[str(examples[i])])+'\n\t\t'+feature_str+'\n\t\t'+rebuild_str
+        logScore[ data_str ] = c
+    top_n = 100
+    print('\nTOP', top_n, ':\n')
+    score_list =  sorted(logScore.items(), key=operator.itemgetter(1), reverse=True)
+    for pair in score_list[:top_n]:
+        print('score:', pair[1], pair[0])
+    print("Writing into "+path+"logScore ...")
+    with open(path+'logScore', 'wb') as outFile: 
+        for data, score in score_list:
+            outFile.write('score: '+str(score)+data+'\n')
+   
+        '''
         if c > test_cost:
             abnormal += 1
             abnormal_avg_cost += c
@@ -188,7 +207,8 @@ with tf.Session() as sess:
         else:
             normal += 1
             normal_avg_cost += c
-    
+        ''' 
+    ''' 
     print('for testing features:') 
     print('False Positive:', abnormal, ', cost = ', abnormal_avg_cost/abnormal)
     print('        Normal:', normal, ', cost = ', normal_avg_cost/normal)
@@ -199,6 +219,16 @@ with tf.Session() as sess:
             print('score:',v, k)
             outFile.write('score: '+str(v)+' '+str(k)+'\n')
         #json.dump(sorted(falsePositive), outFile, ensure_ascii=False, indent=4) 
+    
+        # Compare original images with their reconstructions
+        examples = test_features[:examples_to_show]
+        for i in range(examples_to_show):
+            encode_decode, c = sess.run(
+                [y_pred, cost], feed_dict={X: [examples[i]]})
+            print('testing: ', ', '.join('{0:.3f}'.format(k) for k in examples[i]))
+            print('encoder: ', ', '.join('{0:.3f}'.format(k) for k in encode_decode[0]))
+            print("cost =", "{:.9f}\n".format(c))
+
 
 
 
@@ -233,7 +263,7 @@ with tf.Session() as sess:
         for k, v in sorted(falseNegative.items(), key=operator.itemgetter(1)):
             print('score:',v, k)
             outFile.write('score: '+str(v)+' '+str(k)+'\n')
-
+    '''
 
     SHOW_EXAMPLE = False 
     if SHOW_EXAMPLE:     

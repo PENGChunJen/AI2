@@ -188,7 +188,7 @@ def doJob(rawlog_lists):
 
 def getViolationList():
     user_list = []
-    inputFile = codecs.open('rawlog/violation-201606.txt')
+    inputFile = codecs.open('rawlog/violation-201606.csv')
     rawlog_lists = csv.reader(inputFile)
     for rawlog_list in rawlog_lists:
         user = rawlog_list[3]
@@ -203,13 +203,22 @@ def dategenerator(start, end):
         current += timedelta(days=1)
 
 def split_by_user(rawlog_lists):
-    #services = ['Exchange', 'OWA', 'POP3', 'SMTP', 'VPN']
-    service = 'VPN'
+    #services = [
+    #    'SMTP'       (6325 log/day),
+    #    'VPN'        (6803 log/day),
+    #    'Exchange'  (11557 log/day),
+    #    'POP3'     (292894 log/day),
+    #    'OWA      (1316837 log/day)'
+    #]
+    services = ['SMTP', 'VPN', 'Exchange']
+    #service = 'SMTP'
     job_dict = {} # [rawlog_lists split by users]
     
-    print 'Selecting "'+service+'" logs and Creating jobs...'
+    print 'Selecting "'+(', ').join(services)+'" logs and Creating jobs...'
     for rawlog_list in rawlog_lists:
-        if rawlog_list[0] != 'VPN': continue
+        if rawlog_list[0] not in services: continue
+        #if rawlog_list[0] != 'SMTP': continue
+        #print rawlog_list
         user = rawlog_list[3]
         if user not in job_dict:
             job_dict[user] = [rawlog_list]
@@ -235,9 +244,9 @@ if __name__ == '__main__':
     path = 'rawlog/'
     TEST = False 
     if TEST:
-        ADD_RECORD = True 
-        ADD_DATA = True 
-        ADD_FEATURES = True 
+        ADD_RECORD = False 
+        ADD_DATA = False 
+        ADD_FEATURES = False 
         
         filename = 'testInput.log'
         #filename = 'violation-201606.txt'
@@ -249,9 +258,9 @@ if __name__ == '__main__':
         ADD_DATA = True 
         ADD_FEATURES = True 
         
-        start_date = date(2016,6,1)
-        end_date = date(2016,6,30)
-        ##for filename in os.listdir(path):
+        start_date = date(2016,7,1)
+        end_date = date(2016,7,31)
+        #for filename in os.listdir(path):
         for d in dategenerator(start_date, end_date):
             filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
             filename_list.append(filename)
