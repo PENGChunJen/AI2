@@ -181,7 +181,7 @@ def doWork(rawlog_list):
     #print features
     #print >> outFile, features
     #print date, time, user, service 
-    return features
+    return (rawlog_list, features)
 
 def doJob(rawlog_lists):
     return [doWork(rawlog_list) for rawlog_list in rawlog_lists]
@@ -210,8 +210,8 @@ def split_by_user(rawlog_lists):
     #    'POP3'     (292894 log/day),
     #    'OWA      (1316837 log/day)'
     #]
-    services = ['SMTP', 'VPN', 'Exchange']
-    #service = 'SMTP'
+    #services = ['SMTP', 'VPN', 'Exchange']
+    services = ['SMTP']
     job_dict = {} # [rawlog_lists split by users]
     
     print 'Selecting "'+(', ').join(services)+'" logs and Creating jobs...'
@@ -229,6 +229,90 @@ def split_by_user(rawlog_lists):
 def start_process():
     print 'Starting', multiprocessing.current_process().name
 
+def log2Features(filename):
+    print '\nReading', filename, '...'
+    inputFile = codecs.open(filename, 'r',encoding='ascii', errors='ignore') 
+    rawlog_lists = csv.reader(inputFile)
+   
+    print 'Sorting raw logs by time ...'
+    rawlog_lists = sorted(rawlog_lists, key =itemgetter(2)) #sorted by time
+    print 'Total number of logs:', len(rawlog_lists)
+    job_dict = split_by_user(rawlog_lists)
+    job_list = []
+    for user in sorted(job_dict):
+        if user is not "":                       # CAUTION!!! Missing some logs
+            job_list.append( job_dict[user] )
+    
+    start_time = time.time()
+    
+    #results = [ doJob(job) for job in job_list ]
+
+    print 'Number of multiprocess Workers(cpu_count):',multiprocessing.cpu_count()
+    pool_size = multiprocessing.cpu_count()
+    pool = multiprocessing.Pool(processes = pool_size)
+    #results = [ pool.apply_async(doJob, args=(job, )) for job in job_list]
+    results = pool.map_async(doJob, job_list, chunksize=1)
+    pool.close()
+    
+    total_logs = total_jobs = 0
+    for job in job_list:
+        total_logs = total_logs + len(job)
+    total_jobs = len(job_list)
+    print 'Number of logs:', total_logs, ', Number of jobs (users):', total_jobs
+    widgets=['Sending ', pb.SimpleProgress(),' jobs(', pb.Percentage(),') (', pb.Timer(), ')', pb.Bar('|','[',']'),'(', pb.ETA(),')']
+    pbar = pb.ProgressBar(widgets=widgets, maxval=total_jobs).start()
+    while (True):
+        if(results.ready()): break
+        remaining = results._number_left
+        pbar.update(total_jobs-remaining)
+        time.sleep(0.5)
+    pbar.finish()
+
+    log_pairs_of_users = results.get()
+    log_pairs = []
+    for log_pairs_of_user in log_pairs_of_users:
+        log_pairs.extend(log_pairs_of_user)
+    
+    #pool.join()
+    
+    elapsed_time = time.time() - start_time
+    print("--- Total time cost %s seconds ---" % (elapsed_time))
+    print("--- Avg. Process Speed: %f logs/sec ---" % (total_logs/float(elapsed_time)))
+    return log_pairs
+
+def get_filename_list(TEST):
+    filename_list = []
+    if TEST:
+        #filename = 'testInput.log'
+        #filename = 'violation-201606.txt'
+        filename = 'all-20160601-geo.log'
+        filename_list.append(filename)
+    else:
+        start_date = date(2016,6,1)
+        end_date = date(2016,6,1)
+        #for filename in os.listdir(path):
+        for d in dategenerator(start_date, end_date):
+            filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
+            filename_list.append(filename)
+    return filename_list 
+
+def split_by_service(log_pairs):
+    Exchange_log_pairs = []
+    SMTP_log_pairs = []
+    VPN_log_pairs = []
+    for log_pair in log_pairs:
+        log = log_pair[0]
+        service = log[0]
+        if service == 'Exchange':
+            Exchange_log_pairs.append(log_pair)
+        elif service == 'SMTP':
+            SMTP_log_pairs.append(log_pair)
+        elif service == 'VPN':
+            VPN_log_pairs.append(log_pair)
+    
+    return SMTP_log_pairs, VPN_log_pairs, Exchange_log_pairs 
+
+
 if __name__ == '__main__':
     # Define a defualt Elasticsearch client
     hosts = ['192.168.1.1:9200','192.168.1.2:9200','192.168.1.3:9200','192.168.1.4:9200','192.168.1.5:9200','192.168.1.6:9200','192.168.1.10:9200']
@@ -237,78 +321,26 @@ if __name__ == '__main__':
     es = Elasticsearch(hosts, maxsize=max_thread)
     es.indices.create(index='ai2',ignore=[400])
     #Record.init()
-
-    violationList = getViolationList()
-
-    filename_list = []
-    path = 'rawlog/'
-    TEST = False 
-    if TEST:
-        ADD_RECORD = False 
-        ADD_DATA = False 
-        ADD_FEATURES = False 
-        
-        filename = 'testInput.log'
-        #filename = 'violation-201606.txt'
-        #filename = 'all-20160601-geo.log'
-        filename_list.append(filename)
     
+    TEST = True 
+    if TEST: 
+        ADD_RECORD = ADD_DATA = ADD_FEATURES = False 
     else:
-        ADD_RECORD = True 
-        ADD_DATA = True 
-        ADD_FEATURES = True 
-        
-        start_date = date(2016,7,1)
-        end_date = date(2016,7,31)
-        #for filename in os.listdir(path):
-        for d in dategenerator(start_date, end_date):
-            filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
-            filename_list.append(filename)
+        ADD_RECORD = ADD_DATA = ADD_FEATURES = True 
     
-    for filename in filename_list:
-        print '\nReading', filename, '...'
-        inputFile = codecs.open(path+filename, 'r',encoding='ascii', errors='ignore') 
-        rawlog_lists = csv.reader(inputFile)
-       
-        print 'Sorting raw logs by time ...'
-        rawlog_lists = sorted(rawlog_lists, key =itemgetter(2)) #sorted by time
-        print 'Total number of logs:', len(rawlog_lists)
-        job_dict = split_by_user(rawlog_lists)
-        job_list = []
-        for user in sorted(job_dict):
-            if user is not "":                       # CAUTION!!! Missing some logs
-                job_list.append( job_dict[user] )
-        
-        start_time = time.time()
-        
-        #results = [ doJob(job) for job in job_list ]
+    filename_list = get_filename_list(TEST)
+    path = 'rawlog/'
 
-        print 'Number of multiprocess Workers(cpu_count):',multiprocessing.cpu_count()
-        #pool_size = 48 
-        pool_size = multiprocessing.cpu_count()
-        #pool = multiprocessing.Pool(processes = pool_size, initializer = start_process)
-        pool = multiprocessing.Pool(processes = pool_size)
-        #results = [ pool.apply_async(doJob, args=(job, )) for job in job_list]
-        results = pool.map_async(doJob, job_list, chunksize=1)
-        pool.close()
+    for filename in filename_list:
+        log_pairs = log2Features(path+filename)
+        SMTP_log_pairs, VPN_log_pairs, Exchange_log_pairs = split_by_service(log_pairs)
         
-        total_logs = total_jobs = 0
-        for job in job_list:
-            total_logs = total_logs + len(job)
-        total_jobs = len(job_list)
-        print 'Number of logs:', total_logs, ', Number of jobs (users):', total_jobs
-        widgets=['Finished ', pb.SimpleProgress(),' jobs(', pb.Percentage(),') (', pb.Timer(), ')', pb.Bar('|','[',']'),'(', pb.ETA(),')']
-        pbar = pb.ProgressBar(widgets=widgets, maxval=total_jobs).start()
-        while (True):
-            if(results.ready()): break
-            remaining = results._number_left
-            #print "Waiting for", remaining, "tasks to complete..."
-            pbar.update(total_jobs-remaining)
-            time.sleep(0.5)
-        pbar.finish()
-        #print results.get()
-        #pool.join()
-        elapsed_time = time.time() - start_time
-        print("--- Total time cost %s seconds ---" % (elapsed_time))
-        print("--- Avg. Process Speed: %f logs/sec ---" % (total_logs/float(elapsed_time)))
-        #pickle.dump(output, open('output/'+filename+'.feature', 'wb'))
+        from autoencoder import autoencoder 
+        score_list = autoencoder(SMTP_log_pairs)
+        sorted_list = sorted(score_list, key=itemgetter('score'), reverse=True)
+        pickle.dump(sorted_list, open('output/'+filename, 'wb'))
+        
+        for i in xrange(20):
+            data = sorted_list[i]
+            print 'score:', data['score'] 
+            print 'log:', data['log'] 
