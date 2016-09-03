@@ -13,6 +13,7 @@ from __future__ import division, print_function, absolute_import
 import tensorflow as tf
 import numpy as np
 import os, random, json, operator
+from operator import itemgetter
 import cPickle as pickle
 from json import encoder
 encoder.FLOAT_REPR = lambda o: format(o, '.6f')
@@ -75,25 +76,25 @@ def optimization(sess, training_features, testing_features, X, y_pred, cost, opt
     return sess
 
 
-def autoencoder(log_pairs):
+def autoencoder( training_data, log_pairs):
     print('\nBuilding Autoencoder...')
     score_list = []
-    features = [ p[1] for p in log_pairs ]
-    num_training = int(len(features) * 0.9)
-    random.shuffle(features)
-    training_features = features[:num_training]
-    testing_features = features[num_training:]
+    #features = [ p[1] for p in log_pairs ]
+    num_training = int(len(training_data) * 0.9)
+    random.shuffle(training_data)
+    training_features = training_data[:num_training]
+    testing_features = training_data[num_training:]
     learning_rate = 0.01
     training_epochs = 20
     batch_size = 256 if num_training >= 2560 else int(num_training / 10)
     display_step = 10
-    print('total features:', len(features))
-    print('      training:', len(training_features))
-    print('       testing:', len(testing_features))
+    print('total   :', len(training_data))
+    print('training:', len(training_features))
+    print('testing :', len(testing_features))
     sess = tf.Session()
     sess, X, y_pred, cost, optimizer = initialization(sess, learning_rate)
     sess = optimization(sess, training_features, testing_features, X, y_pred, cost, optimizer, training_epochs, batch_size, display_step)
-    print('Generating score for all features...')
+    print('Generating scores for all features...')
     for log_pair in log_pairs:
         log = log_pair[0]
         feature = log_pair[1]
@@ -105,8 +106,9 @@ def autoencoder(log_pairs):
             'score': float(score)
         }
         score_list.append(data)
-
-    return score_list
+    
+    sorted_list = sorted(score_list, key=itemgetter('score'), reverse=True)
+    return sorted_list
 
 
 def load_training_data_from_file():

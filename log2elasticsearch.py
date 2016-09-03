@@ -10,7 +10,6 @@ from elasticsearch_dsl import Index, DocType, String, Date, Integer, Boolean
 from elasticsearch_dsl import Search, Q 
 from elasticsearch_dsl.connections import connections 
 
-
 class Record(DocType):
     user    = String(analyzer='snowball', fields={'raw': String(index='not_analyzed')})
     time    = Date()
@@ -55,7 +54,6 @@ def rawlog2json(rawlog_list):
         ('nation',rawlog_list[9])
     ]) 
     return json.dumps(data, ensure_ascii=False, indent=4) 
-
 
 def countPastLogMean(rawlog_list):
     timestamp = datetime.strptime(rawlog_list[1]+'T'+rawlog_list[2], '%Y-%m-%dT%H:%M:%S')
@@ -212,13 +210,11 @@ def split_by_user(rawlog_lists):
     #]
     #services = ['SMTP', 'VPN', 'Exchange']
     services = ['SMTP']
-    job_dict = {} # [rawlog_lists split by users]
+    job_dict = {} # job_dict[user] = [rawlog_lists, rawlog_lists]
     
     print 'Selecting "'+(', ').join(services)+'" logs and Creating jobs...'
     for rawlog_list in rawlog_lists:
         if rawlog_list[0] not in services: continue
-        #if rawlog_list[0] != 'SMTP': continue
-        #print rawlog_list
         user = rawlog_list[3]
         if user not in job_dict:
             job_dict[user] = [rawlog_list]
@@ -312,11 +308,80 @@ def split_by_service(log_pairs):
     
     return SMTP_log_pairs, VPN_log_pairs, Exchange_log_pairs 
 
+def removeItemFromList( l, item):
+    if item in l:
+        l.remove(item)
+    else:
+        print item, 'is not in', l
+
+def clear_ES_record(rawlog_list):
+    service = rawlog_list[0]
+    date    = rawlog_list[1]
+    time    = rawlog_list[2]
+    user    = rawlog_list[3]
+    server  = rawlog_list[4]
+    ip      = rawlog_list[5]
+    device  = rawlog_list[6]
+    city    = rawlog_list[7]
+    county  = rawlog_list[8]
+    nation  = rawlog_list[9]
+    
+    es = Elasticsearch(hosts, maxsize=max_thread)
+    res = es.get(index='ai2', doc_type='data', id=user, ignore=[400,404])
+    if not res['found']:
+        print 'Error: Cannot find data related to log', rawlog_list
+    else:
+        doc = res['_source']
+        print 'Before removing data in doc', user, ':', json.dumps(doc, indent=4)
+        removeItemFromList(doc['device'], device) 
+        removeItemFromList(doc['ip'], ip) 
+        removeItemFromList(doc['city'], city) 
+        removeItemFromList(doc['county'], county) 
+        removeItemFromList(doc['nation'], nation) 
+        print 'After removing data in doc', user, ':', json.dumps(doc, indent=4)
+        res = es.index(index='ai2', doc_type='data', id=user, body=doc, refresh=True)        
+
+def supervision(sorted_list):
+    #sorted_list = [{ 'score':score, 'log': [log], 'feature': [feature], 'encode_decode':[en_de]}, {}, ...]
+    normal_data = []
+    abnormal_data = []
+    for data in sorted_list:
+        print '\nscore:', data['score'] 
+        print 'log:', data['log'] 
+        
+        classify = raw_input("0: Normal, 1:Anomaly, Please enter '0' or '1' or 'exit':")
+        while(classify not in ['0', '1', 'exit']):
+            print 'Undefined behavior, please try again!'
+            classify = raw_input("0: Normal, 1:Anomaly, Please enter '0' or '1' or 'exit':")
+        
+        if classify == '0':
+            normal_data.append(data)
+        if classify == '1':
+            abnormal_data.append(data) 
+            clear_ES_record(data['log'])
+        if classify == 'exit':
+            print 'Terminating Program...'
+            doc = {
+                'normalData':normal_data,
+                'abnormalData':abnormal_data
+            }
+            break
+    return normal_data, abnormal_data  
+
+def load_training_data(num, log_pairs):
+    training_data = []
+    normal_data = json.load(open('data/normal_data.json', 'r')) 
+    for data in normal_data:
+        training_data.append(data['feature'])
+    if len(training_data) < num:
+        new_data = [p[1] for p in log_pairs]
+        training_data.extend(new_data[:(num-len(training_data))])
+    return training_data
 
 if __name__ == '__main__':
     # Define a defualt Elasticsearch client
     hosts = ['192.168.1.1:9200','192.168.1.2:9200','192.168.1.3:9200','192.168.1.4:9200','192.168.1.5:9200','192.168.1.6:9200','192.168.1.10:9200']
-    max_thread = 400
+    max_thread = 200
     client = connections.create_connection(hosts=hosts, maxsize=max_thread)
     es = Elasticsearch(hosts, maxsize=max_thread)
     es.indices.create(index='ai2',ignore=[400])
@@ -335,12 +400,12 @@ if __name__ == '__main__':
         log_pairs = log2Features(path+filename)
         SMTP_log_pairs, VPN_log_pairs, Exchange_log_pairs = split_by_service(log_pairs)
         
-        from autoencoder import autoencoder 
-        score_list = autoencoder(SMTP_log_pairs)
-        sorted_list = sorted(score_list, key=itemgetter('score'), reverse=True)
-        pickle.dump(sorted_list, open('output/'+filename, 'wb'))
-        
-        for i in xrange(20):
-            data = sorted_list[i]
-            print 'score:', data['score'] 
-            print 'log:', data['log'] 
+        from autoencoder import autoencoder
+        training_data = load_training_data(len(SMTP_log_pairs), SMTP_log_pairs)
+        score_list = autoencoder(training_data, SMTP_log_pairs)
+        normal_data, abnormal_data = supervision(score_list)
+        with open('data/normal_data.json', 'w') as f:
+            json.dump(normal_data, f)
+        with open('data/abnormal_data.json', 'w') as f:
+            json.dump(abnormal_data, f)
+        json.dump(score_list, open('output/'+filename, 'wb'))
