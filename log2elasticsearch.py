@@ -140,7 +140,8 @@ def generateFeatures(rawlog_list):
     f2 = (past3daysMean-past7daysMean)/(past7daysMean+delta)
     
     #features = [past1daysMean, past3daysMean, past7daysMean, newDevice, newIp, newCity, newCounty, newNation]
-    features = [f0, f1, f2, newDevice, newIp, newCity, newCounty, newNation]
+    #features = [f0, f1, f2, newDevice, newIp, newCity, newCounty, newNation]
+    features = [f0, f0, f2, newDevice, newIp, newCity, newCounty, newNation]
     return features
 
 def doWork(rawlog_list):        
@@ -284,8 +285,8 @@ def get_filename_list(TEST):
         filename = 'all-20160601-geo.log'
         filename_list.append(filename)
     else:
-        start_date = date(2016,6,1)
-        end_date = date(2016,6,1)
+        start_date = date(2016,6,8)
+        end_date = date(2016,6,8)
         #for filename in os.listdir(path):
         for d in dategenerator(start_date, end_date):
             filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
@@ -343,22 +344,51 @@ def clear_ES_record(rawlog_list):
 
 def supervision(sorted_list):
     #sorted_list = [{ 'score':score, 'log': [log], 'feature': [feature], 'encode_decode':[en_de]}, {}, ...]
+    total_num = len(sorted_list) 
     normal_data = []
     abnormal_data = []
+    data_dict = {} 
     for data in sorted_list:
-        print '\nscore:', data['score'] 
-        print 'log:', data['log'] 
+        user = data['log'][3]
+        if user not in data_dict:
+            data_dict[user] = [data]
+        else:
+            data_dict[user].append(data)
+
+    for data in sorted_list:
+        print "\nsame user's log:"
+        user = data['log'][3]
+        for relevant_data in data_dict[user]:
+            print relevant_data['log'] 
         
-        classify = raw_input("0: Normal, 1:Anomaly, Please enter '0' or '1' or 'exit':")
-        while(classify not in ['0', '1', 'exit']):
+        print '\n          score:', data['score'] 
+        print '            log:', data['log'] 
+        print '        feature:', data['feature']
+        print '  encode_decode:', data['encode_decode']
+        print '                ', len(sorted_list),'/', total_num, 'logs left!\n'
+        
+        classify = raw_input("0: Anomaly, 1: Normal, O: All anomaly, A: All Normal, C:Continue, Please enter '0', '1', 'O', 'A', 'C' or 'exit':")
+        while(classify not in ['0','1','O','A','C','exit']):
             print 'Undefined behavior, please try again!'
-            classify = raw_input("0: Normal, 1:Anomaly, Please enter '0' or '1' or 'exit':")
-        
+            classify = raw_input("0: Anomaly, 1: Normal, O: All anomaly, A: All Normal, C:Continue, Please enter '0', '1', 'O', 'A', 'C' or 'exit':")
+        if classify == 'C': 
+            if data in sorted_list: sorted_list.remove(data)
+            continue
         if classify == '0':
-            normal_data.append(data)
-        if classify == '1':
             abnormal_data.append(data) 
             clear_ES_record(data['log'])
+            if data in sorted_list: sorted_list.remove(data)
+        if classify == '1':
+            normal_data.append(data)
+            if data in sorted_list: sorted_list.remove(data)
+        if classify == 'A':
+            for relevant_data in data_dict[user]:
+                normal_data.append(relevant_data)
+                if relevant_data in sorted_list: sorted_list.remove(relevant_data)
+        if classify == 'O':
+            for relevant_data in data_dict[user]:
+                abnormal_data.append(relevant_data)
+                if relevant_data in sorted_list: sorted_list.remove(relevant_data)
         if classify == 'exit':
             print 'Terminating Program...'
             doc = {
@@ -387,14 +417,21 @@ if __name__ == '__main__':
     es.indices.create(index='ai2',ignore=[400])
     #Record.init()
     
-    TEST = True 
+    path = 'rawlog/'
+    TEST = False 
     if TEST: 
         ADD_RECORD = ADD_DATA = ADD_FEATURES = False 
     else:
         ADD_RECORD = ADD_DATA = ADD_FEATURES = True 
+        start_date = date(2016,6,1)
+        end_date = date(2016,6,7)
+        for d in dategenerator(start_date, end_date):
+            filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
+            log2Features(path+filename)
+    
+    
     
     filename_list = get_filename_list(TEST)
-    path = 'rawlog/'
 
     for filename in filename_list:
         log_pairs = log2Features(path+filename)
@@ -404,8 +441,13 @@ if __name__ == '__main__':
         training_data = load_training_data(len(SMTP_log_pairs), SMTP_log_pairs)
         score_list = autoencoder(training_data, SMTP_log_pairs)
         normal_data, abnormal_data = supervision(score_list)
-        with open('data/normal_data.json', 'w') as f:
-            json.dump(normal_data, f)
-        with open('data/abnormal_data.json', 'w') as f:
-            json.dump(abnormal_data, f)
-        json.dump(score_list, open('output/'+filename, 'wb'))
+
+        data = json.load(open('data/normal_data.json', 'r')) 
+        data.extend(normal_data)
+        json.dump(data, open('data/normal_data.json', 'w'), indent=4)
+
+        data = json.load(open('data/abnormal_data.json', 'r')) 
+        data.extend(normal_data)
+        json.dump(data, open('data/abnormal_data.json', 'w'), indent=4)
+
+        json.dump(score_list, open('output/'+filename, 'wb'), indent=4)
