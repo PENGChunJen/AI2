@@ -215,7 +215,7 @@ def split_by_user(rawlog_lists):
     
     print 'Selecting "'+(', ').join(services)+'" logs and Creating jobs...'
     for rawlog_list in rawlog_lists:
-        if rawlog_list[0] not in services: continue
+        #if rawlog_list[0] not in services: continue
         user = rawlog_list[3]
         if user not in job_dict:
             job_dict[user] = [rawlog_list]
@@ -226,14 +226,19 @@ def split_by_user(rawlog_lists):
 def start_process():
     print 'Starting', multiprocessing.current_process().name
 
-def log2Features(filename):
+def log2Features(filename, services):
     print '\nReading', filename, '...'
     inputFile = codecs.open(filename, 'r',encoding='ascii', errors='ignore') 
-    rawlog_lists = csv.reader(inputFile)
-   
+    rawlogs = csv.reader(inputFile)
+    rawlog_lists = [] 
+    
+    for rawlog in rawlogs:
+        if rawlog[0] not in services: continue
+        rawlog_lists.append(rawlog)
+    
+    print 'Total number of logs:', len(list(rawlogs))
     print 'Sorting raw logs by time ...'
     rawlog_lists = sorted(rawlog_lists, key =itemgetter(2)) #sorted by time
-    print 'Total number of logs:', len(rawlog_lists)
     job_dict = split_by_user(rawlog_lists)
     job_list = []
     for user in sorted(job_dict):
@@ -356,10 +361,10 @@ def supervision(sorted_list):
             data_dict[user].append(data)
 
     for data in sorted_list:
-        print "\nsame user's log:"
+        print "\nSame user's log:"
         user = data['log'][3]
         for relevant_data in data_dict[user]:
-            print relevant_data['log'] 
+            print 'score:', relevant_data['score'], ",".join(relevant_data['log'])
         
         print '\n          score:', data['score'] 
         print '            log:', data['log'] 
@@ -371,42 +376,81 @@ def supervision(sorted_list):
         while(classify not in ['0','1','O','A','C','exit']):
             print 'Undefined behavior, please try again!'
             classify = raw_input("0: Anomaly, 1: Normal, O: All anomaly, A: All Normal, C:Continue, Please enter '0', '1', 'O', 'A', 'C' or 'exit':")
-        if classify == 'C': 
+        if classify == 'exit':
+            print 'Terminating Program...'
+            break
+        elif classify == 'C': 
             if data in sorted_list: sorted_list.remove(data)
             continue
-        if classify == '0':
+        elif classify == '0':
             abnormal_data.append(data) 
             clear_ES_record(data['log'])
-            if data in sorted_list: sorted_list.remove(data)
-        if classify == '1':
+        elif classify == '1':
             normal_data.append(data)
             if data in sorted_list: sorted_list.remove(data)
-        if classify == 'A':
+            if data in data_dict[user]: data_dict[user].remove(data)
+        elif classify == 'A':
             for relevant_data in data_dict[user]:
                 normal_data.append(relevant_data)
                 if relevant_data in sorted_list: sorted_list.remove(relevant_data)
-        if classify == 'O':
+        elif classify == 'O':
             for relevant_data in data_dict[user]:
                 abnormal_data.append(relevant_data)
                 if relevant_data in sorted_list: sorted_list.remove(relevant_data)
-        if classify == 'exit':
-            print 'Terminating Program...'
-            doc = {
-                'normalData':normal_data,
-                'abnormalData':abnormal_data
-            }
-            break
+        
+        if data in sorted_list: sorted_list.remove(data)
+        if data in data_dict[user]: data_dict[user].remove(data)
     return normal_data, abnormal_data  
 
 def load_training_data(num, log_pairs):
     training_data = []
-    normal_data = json.load(open('data/normal_data.json', 'r')) 
-    for data in normal_data:
-        training_data.append(data['feature'])
+    
+    es = Elasticsearch(hosts, maxsize=max_thread)
+    res = es.get(index='ai2', doc_type='data', id='trainingData', ignore=[400,404])
+    if res['found']:
+        #normal_data = res['_source']['normalData']
+        normal_data = json.loads(res['_source']['normalData'])
+        training_data.extend( [data['feature'] for data in normal_data] )     
+        print '\nFound number of normalData:', len(normal_data)
+        print 'Number of trainingData needed:', num 
+    
+    #normal_data = json.load(open('data/normal_data.json', 'r')) 
+    #for data in normal_data:
+    #    training_data.append(data['feature'])
+    
     if len(training_data) < num:
         new_data = [p[1] for p in log_pairs]
-        training_data.extend(new_data[:(num-len(training_data))])
+        if (num-len(training_data)) > len(new_data):
+            num_new_data = len(new_data) 
+        else:
+            num_new_data = num-len(training_data) 
+
+        training_data.extend( new_data[:num_new_data] )
+    
+    if len(training_data) > num:
+        random.shuffle(training_data)
+        training_data = training_data[:num]
+
+    print 'Number of trainingData return:', len(training_data)
     return training_data
+
+def save_training_data(normal_data, abnormal_data):
+    es = Elasticsearch(hosts, maxsize=max_thread)
+    res = es.get(index='ai2', doc_type='data', id='trainingData', ignore=[400,404])
+    if res['found']:
+        original_normal_data = json.loads(res['_source']['normalData']) 
+        normal_data.extend(original_normal_data)  
+        original_abnormal_data = json.loads(res['_source']['abnormalData']) 
+        abnormal_data.extend(original_abnormal_data)  
+    
+    doc = {
+        'normalData':json.dumps(normal_data),
+        'abnormalData':json.dumps(abnormal_data)
+    }
+    print 'Saving number of normalData:', len(normal_data)
+    print 'Saving number of abnormalData:', len(abnormal_data)
+    res = es.index(index='ai2', doc_type='data', id='trainingData', body=doc, refresh=True)        
+
 
 if __name__ == '__main__':
     # Define a defualt Elasticsearch client
@@ -416,6 +460,8 @@ if __name__ == '__main__':
     es = Elasticsearch(hosts, maxsize=max_thread)
     es.indices.create(index='ai2',ignore=[400])
     #Record.init()
+    #services = ['SMTP', 'VPN', 'Exchange']
+    services = ['SMTP']
     
     path = 'rawlog/'
     TEST = False 
@@ -423,31 +469,26 @@ if __name__ == '__main__':
         ADD_RECORD = ADD_DATA = ADD_FEATURES = False 
     else:
         ADD_RECORD = ADD_DATA = ADD_FEATURES = True 
+        
         start_date = date(2016,6,1)
         end_date = date(2016,6,7)
         for d in dategenerator(start_date, end_date):
             filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
-            log2Features(path+filename)
-    
+            log2Features(path+filename, services)
     
     
     filename_list = get_filename_list(TEST)
 
     for filename in filename_list:
-        log_pairs = log2Features(path+filename)
+        log_pairs = log2Features(path+filename, services)
         SMTP_log_pairs, VPN_log_pairs, Exchange_log_pairs = split_by_service(log_pairs)
         
         from autoencoder import autoencoder
-        training_data = load_training_data(len(SMTP_log_pairs), SMTP_log_pairs)
-        score_list = autoencoder(training_data, SMTP_log_pairs)
+        testing_data = SMTP_log_pairs
+        num_training_data = len(SMTP_log_pairs)*10
+        training_data = load_training_data( num_training_data, testing_data )
+        score_list = autoencoder(training_data, testing_data)
         normal_data, abnormal_data = supervision(score_list)
-
-        data = json.load(open('data/normal_data.json', 'r')) 
-        data.extend(normal_data)
-        json.dump(data, open('data/normal_data.json', 'w'), indent=4)
-
-        data = json.load(open('data/abnormal_data.json', 'r')) 
-        data.extend(normal_data)
-        json.dump(data, open('data/abnormal_data.json', 'w'), indent=4)
+        save_training_data(normal_data, abnormal_data)
 
         json.dump(score_list, open('output/'+filename, 'wb'), indent=4)
