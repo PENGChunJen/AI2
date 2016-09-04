@@ -185,15 +185,6 @@ def doWork(rawlog_list):
 def doJob(rawlog_lists):
     return [doWork(rawlog_list) for rawlog_list in rawlog_lists]
 
-def getViolationList():
-    user_list = []
-    inputFile = codecs.open('rawlog/violation-201606.csv')
-    rawlog_lists = csv.reader(inputFile)
-    for rawlog_list in rawlog_lists:
-        user = rawlog_list[3]
-        if user not in user_list:
-            user_list.append(user)
-    return user_list
 
 def dategenerator(start, end):
     current = start
@@ -229,14 +220,15 @@ def start_process():
 def log2Features(filename, services):
     print '\nReading', filename, '...'
     inputFile = codecs.open(filename, 'r',encoding='ascii', errors='ignore') 
-    rawlogs = csv.reader(inputFile)
+    rawlogs_csv = csv.reader(inputFile)
+    rawlogs = list(rawlogs_csv)
     rawlog_lists = [] 
     
     for rawlog in rawlogs:
         if rawlog[0] not in services: continue
         rawlog_lists.append(rawlog)
     
-    print 'Total number of logs:', len(list(rawlogs))
+    print 'Total number of logs:', len(rawlogs)
     print 'Sorting raw logs by time ...'
     rawlog_lists = sorted(rawlog_lists, key =itemgetter(2)) #sorted by time
     job_dict = split_by_user(rawlog_lists)
@@ -287,11 +279,11 @@ def get_filename_list(TEST):
     if TEST:
         #filename = 'testInput.log'
         #filename = 'violation-201606.txt'
-        filename = 'all-20160601-geo.log'
+        filename = 'all-20160609-geo.log'
         filename_list.append(filename)
     else:
-        start_date = date(2016,6,8)
-        end_date = date(2016,6,8)
+        start_date = date(2016,6,20)
+        end_date = date(2016,6,20)
         #for filename in os.listdir(path):
         for d in dategenerator(start_date, end_date):
             filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
@@ -317,8 +309,8 @@ def split_by_service(log_pairs):
 def removeItemFromList( l, item):
     if item in l:
         l.remove(item)
-    else:
-        print item, 'is not in', l
+    #else:
+    #    print item, 'is not in', l
 
 def clear_ES_record(rawlog_list):
     service = rawlog_list[0]
@@ -338,14 +330,53 @@ def clear_ES_record(rawlog_list):
         print 'Error: Cannot find data related to log', rawlog_list
     else:
         doc = res['_source']
-        print 'Before removing data in doc', user, ':', json.dumps(doc, indent=4)
+        #print 'Before removing data in doc', user, ':', json.dumps(doc, indent=4)
         removeItemFromList(doc['device'], device) 
         removeItemFromList(doc['ip'], ip) 
         removeItemFromList(doc['city'], city) 
         removeItemFromList(doc['county'], county) 
         removeItemFromList(doc['nation'], nation) 
-        print 'After removing data in doc', user, ':', json.dumps(doc, indent=4)
+        #print 'After removing data in doc', user, ':', json.dumps(doc, indent=4)
         res = es.index(index='ai2', doc_type='data', id=user, body=doc, refresh=True)        
+
+def getViolationList():
+    user_list = []
+    inputFile = codecs.open('rawlog/violation-201606.csv')
+    rawlog_lists = csv.reader(inputFile)
+    for rawlog_list in rawlog_lists:
+        user = rawlog_list[3]
+        if user not in user_list:
+            user_list.append(user)
+    return user_list
+
+def delete_known_violation(sorted_list):
+    print 'Deleting logs in violation list...'
+    inputFile = codecs.open('rawlog/violation-201606.csv')
+    violations = csv.reader(inputFile)
+
+    new_sorted_list = []
+    violation_data = []
+    
+    date = sorted_list[0]['log'][1] 
+
+    violation_list = []
+    for log in violations:
+        if log[0] not in services: continue
+        if log[1] != date: continue
+        violation_list.append(log)
+    
+    for data in sorted_list:
+        for violation in violation_list:
+            if data['log'] == violation:
+                print 'Deleting', data['log']
+                violation_data.append(data) 
+                clear_ES_record(data['log'])
+                violation_data.append(data)
+                break
+        new_sorted_list.append(data)
+    
+    return new_sorted_list, violation_data
+
 
 def supervision(sorted_list):
     #sorted_list = [{ 'score':score, 'log': [log], 'feature': [feature], 'encode_decode':[en_de]}, {}, ...]
@@ -370,7 +401,7 @@ def supervision(sorted_list):
         print '            log:', data['log'] 
         print '        feature:', data['feature']
         print '  encode_decode:', data['encode_decode']
-        print '                ', len(sorted_list),'/', total_num, 'logs left!\n'
+        print '\t\t\t\t\t\t\t\t\t\t', len(sorted_list),'/', total_num, 'logs left!\n'
         
         classify = raw_input("0: Anomaly, 1: Normal, O: All anomaly, A: All Normal, C:Continue, Please enter '0', '1', 'O', 'A', 'C' or 'exit':")
         while(classify not in ['0','1','O','A','C','exit']):
@@ -455,7 +486,7 @@ def save_training_data(normal_data, abnormal_data):
 if __name__ == '__main__':
     # Define a defualt Elasticsearch client
     hosts = ['192.168.1.1:9200','192.168.1.2:9200','192.168.1.3:9200','192.168.1.4:9200','192.168.1.5:9200','192.168.1.6:9200','192.168.1.10:9200']
-    max_thread = 200
+    max_thread = 100
     client = connections.create_connection(hosts=hosts, maxsize=max_thread)
     es = Elasticsearch(hosts, maxsize=max_thread)
     es.indices.create(index='ai2',ignore=[400])
@@ -469,13 +500,13 @@ if __name__ == '__main__':
         ADD_RECORD = ADD_DATA = ADD_FEATURES = False 
     else:
         ADD_RECORD = ADD_DATA = ADD_FEATURES = True 
-        
+        ''' 
         start_date = date(2016,6,1)
         end_date = date(2016,6,7)
         for d in dategenerator(start_date, end_date):
             filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
             log2Features(path+filename, services)
-    
+        ''' 
     
     filename_list = get_filename_list(TEST)
 
@@ -488,7 +519,10 @@ if __name__ == '__main__':
         num_training_data = len(SMTP_log_pairs)*10
         training_data = load_training_data( num_training_data, testing_data )
         score_list = autoencoder(training_data, testing_data)
+        
+        score_list, violation_data  = delete_known_violation(score_list)
         normal_data, abnormal_data = supervision(score_list)
+        abnormal_data.extend(violation_data)
         save_training_data(normal_data, abnormal_data)
 
-        json.dump(score_list, open('output/'+filename, 'wb'), indent=4)
+        json.dump(score_list, open('output/'+filename+'.score', 'wb'), indent=4)

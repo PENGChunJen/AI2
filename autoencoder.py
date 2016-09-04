@@ -85,7 +85,7 @@ def autoencoder( training_data, log_pairs):
     training_features = training_data[:num_training]
     testing_features = training_data[num_training:]
     learning_rate = 0.01
-    training_epochs = 1000
+    training_epochs = 2000
     batch_size = 256 if num_training >= 2560 else int(num_training / 10)
     display_step = 100
     print('total   :', len(training_data))
