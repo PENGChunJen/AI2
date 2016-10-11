@@ -1,4 +1,4 @@
-import time, os, logging, json, csv, pickle
+import time, os, logging, json, csv, pickle, fnmatch
 import collections, codecs
 from operator import itemgetter 
 from datetime import date, datetime, timedelta
@@ -10,6 +10,14 @@ from elasticsearch_dsl import Index, DocType, String, Date, Integer, Boolean
 from elasticsearch_dsl import Search, Q 
 from elasticsearch_dsl.connections import connections 
 
+# Global variables
+index_name = 'ai2'
+whiteList = ['140.112.*', '209.85.*']
+assigned_start_date = date(2016,6,3)
+assigned_end_date = date(2016,6,3)
+violation_file_path = 'rawlog/violation-201606.csv'
+
+
 class Record(DocType):
     user    = String(analyzer='snowball', fields={'raw': String(index='not_analyzed')})
     time    = Date()
@@ -20,9 +28,9 @@ class Record(DocType):
     city    = String(index='not_analyzed')
     county  = String(index='not_analyzed')
     nation  = String(index='not_analyzed')
-
+    
     class Meta:
-        index = 'ai2'
+        index = index_name
         doc_type = 'log'
     def save(self, *args, **kwargs):
         return super(Record, self).save(*args, **kwargs)
@@ -109,7 +117,7 @@ def generateFeatures(rawlog_list):
     past1daysMean, past3daysMean, past7daysMean = countPastLogMean(rawlog_list)
 
     es = Elasticsearch(hosts, maxsize=max_thread)
-    res = es.get(index='ai2', doc_type='data', id=user, ignore=[400, 404])
+    res = es.get(index=index_name, doc_type='data', id=user, ignore=[400, 404])
     if not res['found']:
         doc = {
             'device':[device],
@@ -119,7 +127,7 @@ def generateFeatures(rawlog_list):
             'nation':[nation]
         }
         if ADD_DATA:
-            res = es.index(index='ai2',doc_type='data', id=user, body=doc)
+            res = es.index(index=index_name,doc_type='data', id=user, body=doc)
         newDevice = newIp = newCity = newCounty = newNation = 1.0
     else:
         #print json.dumps(res, indent=4)
@@ -131,7 +139,7 @@ def generateFeatures(rawlog_list):
         newNation = checkIsNewItem(doc['nation'], nation) 
         #print 'doc', json.dumps(doc, indent=4)
         if ADD_DATA:
-            res = es.index(index='ai2', doc_type='data', id=user, body=doc, refresh=True)        
+            res = es.index(index=index_name, doc_type='data', id=user, body=doc, refresh=True)        
   
     delta = 0.000001
     #TODO compare with same day(e.g. Monday) of the past 4 weeks 
@@ -165,7 +173,7 @@ def doWork(rawlog_list):
     id_str = date+'T'+time+'_'+user+'_'+service 
     if ADD_RECORD:
         newRecord(rawlog_list, id_str)
-        res = es.indices.refresh(index='ai2') 
+        res = es.indices.refresh(index=index_name) 
    
     features = generateFeatures(rawlog_list)
     
@@ -174,7 +182,7 @@ def doWork(rawlog_list):
             'raw_log':repr(rawlog_list),
             'features':repr(features)
         }
-        res = es.index(index='ai2', doc_type='features', id=id_str, body=doc, refresh=True)        
+        res = es.index(index=index_name, doc_type='features', id=id_str, body=doc, refresh=True)        
     
     #print rawlog2json(rawlog_list)
     #print features
@@ -282,8 +290,8 @@ def get_filename_list(TEST):
         filename = 'all-20160609-geo.log'
         filename_list.append(filename)
     else:
-        start_date = date(2016,6,20)
-        end_date = date(2016,6,20)
+        start_date = assigned_start_date
+        end_date = assigned_end_date
         #for filename in os.listdir(path):
         for d in dategenerator(start_date, end_date):
             filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
@@ -325,7 +333,7 @@ def clear_ES_record(rawlog_list):
     nation  = rawlog_list[9]
     
     es = Elasticsearch(hosts, maxsize=max_thread)
-    res = es.get(index='ai2', doc_type='data', id=user, ignore=[400,404])
+    res = es.get(index=index_name, doc_type='data', id=user, ignore=[400,404])
     if not res['found']:
         print 'Error: Cannot find data related to log', rawlog_list
     else:
@@ -337,11 +345,11 @@ def clear_ES_record(rawlog_list):
         removeItemFromList(doc['county'], county) 
         removeItemFromList(doc['nation'], nation) 
         #print 'After removing data in doc', user, ':', json.dumps(doc, indent=4)
-        res = es.index(index='ai2', doc_type='data', id=user, body=doc, refresh=True)        
+        res = es.index(index=index_name, doc_type='data', id=user, body=doc, refresh=True)        
 
 def getViolationList():
     user_list = []
-    inputFile = codecs.open('rawlog/violation-201606.csv')
+    inputFile = codecs.open(violation_file_path)
     rawlog_lists = csv.reader(inputFile)
     for rawlog_list in rawlog_lists:
         user = rawlog_list[3]
@@ -350,8 +358,9 @@ def getViolationList():
     return user_list
 
 def delete_known_violation(sorted_list):
+    #sorted_list = [{ 'score':score, 'log': [log], 'feature': [feature], 'encode_decode':[en_de]}, {}, ...]
     print 'Deleting logs in violation list...'
-    inputFile = codecs.open('rawlog/violation-201606.csv')
+    inputFile = codecs.open(violation_file_path)
     violations = csv.reader(inputFile)
 
     new_sorted_list = []
@@ -377,6 +386,13 @@ def delete_known_violation(sorted_list):
     
     return new_sorted_list, violation_data
 
+def ipInWhiteList(ip):
+    for w in whiteList:
+        if fnmatch.fnmatch(ip, w):
+            print ip,'is in white list, ignoreing...'
+            return True
+    return False
+
 
 def supervision(sorted_list):
     #sorted_list = [{ 'score':score, 'log': [log], 'feature': [feature], 'encode_decode':[en_de]}, {}, ...]
@@ -392,6 +408,14 @@ def supervision(sorted_list):
             data_dict[user].append(data)
 
     for data in sorted_list:
+        ip = data['log'][5]
+        if ipInWhiteList(ip):
+            normal_data.append(data)
+            if data in sorted_list: sorted_list.remove(data)
+            if data in data_dict[user]: data_dict[user].remove(data)
+            continue
+
+
         print "\nSame user's log:"
         user = data['log'][3]
         for relevant_data in data_dict[user]:
@@ -437,7 +461,7 @@ def load_training_data(num, log_pairs):
     training_data = []
     
     es = Elasticsearch(hosts, maxsize=max_thread)
-    res = es.get(index='ai2', doc_type='data', id='trainingData', ignore=[400,404])
+    res = es.get(index=index_name, doc_type='data', id='trainingData', ignore=[400,404])
     if res['found']:
         #normal_data = res['_source']['normalData']
         normal_data = json.loads(res['_source']['normalData'])
@@ -467,7 +491,7 @@ def load_training_data(num, log_pairs):
 
 def save_training_data(normal_data, abnormal_data):
     es = Elasticsearch(hosts, maxsize=max_thread)
-    res = es.get(index='ai2', doc_type='data', id='trainingData', ignore=[400,404])
+    res = es.get(index=index_name, doc_type='data', id='trainingData', ignore=[400,404])
     if res['found']:
         original_normal_data = json.loads(res['_source']['normalData']) 
         normal_data.extend(original_normal_data)  
@@ -480,7 +504,7 @@ def save_training_data(normal_data, abnormal_data):
     }
     print 'Saving number of normalData:', len(normal_data)
     print 'Saving number of abnormalData:', len(abnormal_data)
-    res = es.index(index='ai2', doc_type='data', id='trainingData', body=doc, refresh=True)        
+    res = es.index(index=index_name, doc_type='data', id='trainingData', body=doc, refresh=True)        
 
 
 if __name__ == '__main__':
@@ -489,7 +513,7 @@ if __name__ == '__main__':
     max_thread = 100
     client = connections.create_connection(hosts=hosts, maxsize=max_thread)
     es = Elasticsearch(hosts, maxsize=max_thread)
-    es.indices.create(index='ai2',ignore=[400])
+    es.indices.create(index=index_name,ignore=[400])
     #Record.init()
     #services = ['SMTP', 'VPN', 'Exchange']
     services = ['SMTP']
@@ -507,7 +531,6 @@ if __name__ == '__main__':
             filename = 'all-'+d.strftime('%Y%m%d')+'-geo.log'
             log2Features(path+filename, services)
         ''' 
-    
     filename_list = get_filename_list(TEST)
 
     for filename in filename_list:
