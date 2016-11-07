@@ -1,6 +1,6 @@
 indexName = 'ai2_test'
 
-login = {
+log = {
     'user': user,
     'timestamp': timestamp,
     'service': service,
@@ -16,54 +16,24 @@ res = es.index(
         index = indexName, 
         doc_type = 'log', 
         id = timestamp+'_'+user+'_'+service,
-        body = login, 
+        body = log, 
         refresh = True
       )
 
 #Speed? if IP in userData['IPs']
 # userData = { 'IPs':{ IP:[timestamp] } }
 userData = {
-    'services':[
-        {
-            'service':service,
-            'timestamps':[timestamp] #better DS to save time?
-        }
-    ],
-    'IPs':[
-        {
-            'IP':IP,
-            'timestamps':[timestamp]
-        }
-    ],
-    'devices':[
-        {
-            'device':device,
-            'timestamps':[timestamp]
-        }
-    ],
-    'cities':[
-        {
-            'city':city,
-            'timestamps':[timestamp]
-        }
-    ],
-    'counties':[
-        {
-            'county':county,
-            'timestamps':[timestamp]
-        }
-    ],
-    'nations':[
-        {
-            'nation':nation,
-            'timestamps':[timestamp]
-        }
-    ],
-    'dates':[
+    'services':defaultdict(list),
+    'IPs':defaultdict(list),
+    'devices':defaultdict(list),
+    'cities':defaultdict(list),
+    'counties':defaultdict(list),
+    'nations':defaultdict(list),
+    'timestamps':[
        {
-          'date':date
+          'timestamp':timestamp
           # What to save?
-          'logins':[login]
+          'logs':[log]
        }
     ]
 }
