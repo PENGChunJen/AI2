@@ -11,10 +11,10 @@ from elasticsearch_dsl import Search, Q
 from elasticsearch_dsl.connections import connections 
 
 # Global variables
-index_name = 'ai2'
+index_name = 'ai2_test'
 whiteList = ['140.112.*', '209.85.*']
-assigned_start_date = date(2016,6,3)
-assigned_end_date = date(2016,6,3)
+assigned_start_date = date(2016,6,10)
+assigned_end_date = date(2016,6,10)
 violation_file_path = 'rawlog/violation-201606.csv'
 
 
