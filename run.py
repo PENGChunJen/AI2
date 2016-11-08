@@ -3,8 +3,8 @@ import time
 from datetime import date, timedelta
 from collections import deque
 
-from file2log import generateLogs, generateJobs
-from log2data import generateUserData, generateData 
+from file2log import generateLogs 
+from log2data import generateData, generateDataFromJob 
 from data2score import generateScore
 
 from elasticsearch import Elasticsearch, helpers
@@ -39,84 +39,109 @@ def generateJobs(logs):
     print('Split into %d jobs for multiprocessing ...'%(len(jobList)))
     return usersLog 
 
-def bulkUpdate( logList, userDataList, dataList, es ):
+def bulkUpdate( logList, userDataList, dataList ):
+    es = Elasticsearch(hosts=hosts, maxsize=maxThread)
+    
     actions = []
-    idStr = '%s_%s_%s'%(log['timestamp'].isoformat(),
-                        log['user'],log['service'])
-    actions.append({
-        '_op_type': 'index',
-        '_index'  : indexName,
-        '_type'   : 'log',
-        '_id'     : idStr, 
-        '_source' : log
-    })
+    for log in logList:
+        idStr = '%s_%s_%s'%(log['timestamp'].isoformat(),
+                            log['user'],log['service'])
+        action = {
+            '_op_type': 'index',
+            '_index'  : indexName,
+            '_type'   : 'log',
+            '_id'     : idStr, 
+            '_source' : log
+        }
+        actions.append(action)
+        if len(actions) == 5000:
+            helpers.bulk(es,actions)
+            del actions[0:len(actions)]
+    
+    #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread))
+    helpers.bulk(es,actions)
+    del actions[0:len(actions)]
+  
 
-    #op = 'index' if newUser else 'update'
-    actions.append({
-        '_op_type': 'index',
-        '_index'  : indexName,
-        '_type'   : 'userData',
-        '_id'     : log['user'], 
-        '_source' : userData,
-        
-    })
-
-    actions.append({
-        '_op_type': 'index',
-        '_index'  : indexName,
-        '_type'   : 'data',
-        '_id'     : idStr, 
-        '_source' : data 
-    })
+    for userData in userDataList:
+        action = {
+            '_op_type': 'index',
+            '_index'  : indexName,
+            '_type'   : 'userData',
+            '_id'     : userData['user'], 
+            '_source' : userData,
+        }
+        actions.append(action)
+        if len(actions) == 5000:
+            helpers.bulk(es,actions)
+            del actions[0:len(actions)]
 
     #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread))
-    #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread)), maxlen=100000)
-    
     helpers.bulk(es,actions)
+    del actions[0:len(actions)]
+
+    for data in dataList:
+        idStr = '%s_%s_%s'%(log['timestamp'].isoformat(),
+                            log['user'],log['service'])
+        action = {
+            '_op_type': 'index',
+            '_index'  : indexName,
+            '_type'   : 'data',
+            '_id'     : idStr, 
+            '_source' : data 
+        }
+        actions.append(action)
+        if len(actions) == 5000:
+            helpers.bulk(es,actions)
+            del actions[0:len(actions)]
+    
+    #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread))
+    helpers.bulk(es,actions)
+    del actions[0:len(actions)]
+
     #es.indices.refresh(index=indexName)
 
 
-def run(es):
+def run():
     fileNameList = generateFileNameList(startDate, endDate)
     for fileName in fileNameList:
         print('Loading %s ... (ETA:30s)'%(fileName))
         
         logs = generateLogs(fileName) 
-        #jobList = generateJobs(logLists)
-
+        userDataList = []
+        dataList = []
         for log in logs:
-            data, userData = generateData(log) 
+            print('%s %s'%(log['timestamp'], log['user']))
+            userData, data = generateData(log) 
             data = generateScore(data)
-            bulkUpdate( log, userData, newUser, data, es )
 
-def doWork(job):
+            userDataList.append( userData )
+            dataList.append( data )
+
+        bulkUpdate( logs, userDataList, dataList )
+
+
+def doJob(job):
     userData, dataList = generateDataFromJob(job) 
     dataList = [generateScore(data) for data in dataList]
     return userData, dataList
 
-def doJob(jobList):
-    return [doWork(job) for job in jobList] 
-
-def runParallel(es):
+def runParallel():
     fileNameList = generateFileNameList(startDate, endDate)
     for fileName in fileNameList:
         print('Loading %s ... (ETA:30s)'%(fileName))
         
         logs = generateLogs(fileName) 
         jobList = generateJobs(logs)
-
         
         pool_size = multiprocessing.cpu_count()
         pool = multiprocessing.Pool(processes = pool_size)
         results = pool.map_async(doJob, jobList, chunksize=1)
         pool.close()
-       
-        results.get() 
-        data, userData = generateData(log) 
+        pool.join()       
 
-            data = generateScore(data)
-
-            bulkUpdate( log, userData, newUser, data, es )
+        
+        bulkUpdate( logs, userDataList, dataList )
 
 
 if __name__ == '__main__':
@@ -133,5 +158,5 @@ if __name__ == '__main__':
     es = Elasticsearch(hosts=hosts, maxsize=maxThread)
     es.indices.create(index=indexName,ignore=[400])
     
-    run(es)
+    run()
 

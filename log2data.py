@@ -1,7 +1,19 @@
 from collections import defaultdict
+from elasticsearch import Elasticsearch
+# Define a defualt Elasticsearch client
+indexName = 'ai2_v2.0'
+hosts = ['192.168.1.1:9200',
+         '192.168.1.2:9200',
+         '192.168.1.3:9200',
+         '192.168.1.4:9200',
+         '192.168.1.5:9200',
+         '192.168.1.6:9200',
+         '192.168.1.10:9200']
+maxThread = 100
 
 def generateUserData(user):
     userData = {
+        'user':user,
         'services':{},
         #'IPs':{},
         'devices':{},
@@ -23,7 +35,7 @@ def getUserData(user, es):
     else:
         userData = res['_source']
         
-    return userData, newUser
+    return userData
 
 def update( Dict, key, value ):
     if key in Dict:
@@ -33,7 +45,7 @@ def update( Dict, key, value ):
 
 #TODO
 def generateData(log):
-    # es =  
+    es = Elasticsearch(hosts=hosts, maxsize=maxThread)
     userData = getUserData( log['user'], es )
     featureVector = [0.0 for x in xrange(24)]
     data = {
