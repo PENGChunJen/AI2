@@ -13,13 +13,14 @@ def generateLog(logList):
         'service'  : logList[0],
         'timestamp': timestamp,
         'user'     : logList[3],
-        #'server'   : logList[4],
+        'server'   : logList[4],
         #'IP'       : logList[5],
+        'IP'       : '0,0,0,0',
         'device'   : logList[6],
         'city'     : logList[7],
         'county'   : logList[8],
         'nation'   : logList[9],
-        'label'    : None
+        'label'    : {'analyst':None, 'randomForest':None} 
     }
     return log
 

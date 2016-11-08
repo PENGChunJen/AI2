@@ -55,10 +55,12 @@ def bulkUpdate( logList, userDataList, dataList ):
         }
         actions.append(action)
         if len(actions) == 5000:
+            print('bulk indexing %d actions'%(len(actions))) 
             helpers.bulk(es,actions)
             del actions[0:len(actions)]
     
     #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread))
+    print('bulk indexing %d actions'%(len(actions))) 
     helpers.bulk(es,actions)
     del actions[0:len(actions)]
   
@@ -73,15 +75,17 @@ def bulkUpdate( logList, userDataList, dataList ):
         }
         actions.append(action)
         if len(actions) == 5000:
+            print('bulk indexing %d actions'%(len(actions))) 
             helpers.bulk(es,actions)
             del actions[0:len(actions)]
 
     #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread))
+    print('bulk indexing %d actions'%(len(actions))) 
     helpers.bulk(es,actions)
     del actions[0:len(actions)]
 
     for data in dataList:
-        idStr = '%s_%s_%s'%(log['timestamp'].isoformat(),
+        idStr = '%s_%s_%s_data'%(log['timestamp'].isoformat(),
                             log['user'],log['service'])
         action = {
             '_op_type': 'index',
@@ -92,10 +96,12 @@ def bulkUpdate( logList, userDataList, dataList ):
         }
         actions.append(action)
         if len(actions) == 5000:
+            print('bulk indexing %d actions'%(len(actions))) 
             helpers.bulk(es,actions)
             del actions[0:len(actions)]
     
     #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread))
+    print('bulk indexing %d actions'%(len(actions))) 
     helpers.bulk(es,actions)
     del actions[0:len(actions)]
 
@@ -108,6 +114,7 @@ def run():
         print('Loading %s ... (ETA:30s)'%(fileName))
         
         logs = generateLogs(fileName) 
+        userDataDict = {}
         userDataList = []
         dataList = []
         for log in logs:
@@ -115,9 +122,12 @@ def run():
             userData, data = generateData(log) 
             data = generateScore(data)
 
-            userDataList.append( userData )
+            userDataDict[ log['user'] ] = userData
+            userDataList = userDataDict.values()
             dataList.append( data )
-
+        print('number of logs    :%d'%len(logs))
+        print('number of userData:%d'%len(userDataList))
+        print('number of data    :%d'%len(dataList))
         bulkUpdate( logs, userDataList, dataList )
 
 

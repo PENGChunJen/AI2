@@ -15,7 +15,7 @@ def generateUserData(user):
     userData = {
         'user':user,
         'services':{},
-        #'IPs':{},
+        'IPs':{},
         'devices':{},
         'cities':{},
         'counties':{},
@@ -57,7 +57,7 @@ def generateData(log):
     
      
     update( userData['services'], log['service'], log['timestamp'] )
-    #update( userData['IPs'], log['IP'], log['timestamp'] )
+    update( userData['IPs'], log['IP'], log['timestamp'] )
     update( userData['devices'], log['device'], log['timestamp'] )
     update( userData['cities'], log['city'], log['timestamp'] )
     update( userData['counties'], log['county'], log['timestamp'] )
