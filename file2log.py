@@ -22,7 +22,12 @@ def generateLog(logList):
     }
     return log
 
-def generateLogs(logLists):
+def generateLogs(fileName):
+    inputFile = codecs.open(fileName, 'r', 
+                    encoding='ascii', errors='ignore') 
+    logLists = list(csv.reader(inputFile))
+    #print('Total Number of logs: %d'%(len(logLists)))
+    
     logs = []
     for logList in logLists:
         #Filter by services
@@ -34,14 +39,3 @@ def generateLogs(logLists):
     #Sort by timestamp 
     logsSortByTime = sorted(logs, key = itemgetter('timestamp'))
     return logsSortByTime
-
-def generateJobs(logLists):
-    logs = generateLogs(logLists)
-    
-    usersLog = defaultdict(list)
-    #Split by User
-    for log in logs:
-        usersLog[ log['user'] ].append(log)
-    jobList = usersLog.values()
-    print('Split into %d jobs for multiprocessing ...'%(len(jobList)))
-    return jobList

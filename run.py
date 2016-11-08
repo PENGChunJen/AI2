@@ -30,24 +30,16 @@ def generateFileNameList(startDate, endDate):
         filename_list.append(filename)
     return filename_list 
 
-def getUserData(user, es):
-    res = es.get( index = indexName, 
-                  doc_type = 'userData',
-                  id = user,
-                  ignore = [404]
-          )
-    newUser = False
-    if not res['found']:
-        print 'new User'
-        newUser = True
-        userData = generateUserData(user)
-    else:
-        print ''
-        userData = res['_source']
-        
-    return userData, newUser
+def generateJobs(logs):
+    usersLog = defaultdict(list)
+    #Split by User
+    for log in logs:
+        usersLog[ log['user'] ].append(log)
+    jobList = usersLog.values()
+    print('Split into %d jobs for multiprocessing ...'%(len(jobList)))
+    return usersLog 
 
-def bulkUpdate( log, userData, newUser, data, es ):
+def bulkUpdate( logList, userDataList, dataList, es ):
     actions = []
     idStr = '%s_%s_%s'%(log['timestamp'].isoformat(),
                         log['user'],log['service'])
@@ -83,24 +75,44 @@ def bulkUpdate( log, userData, newUser, data, es ):
     helpers.bulk(es,actions)
     #es.indices.refresh(index=indexName)
 
+
 def run(es):
     fileNameList = generateFileNameList(startDate, endDate)
     for fileName in fileNameList:
         print('Loading %s ... (ETA:30s)'%(fileName))
-        inputFile = codecs.open(fileName, 'r', 
-                        encoding='ascii', errors='ignore') 
-        logLists = list(csv.reader(inputFile))
-        print('Total Number of logs: %d'%(len(logLists)))
         
-        logs = generateLogs(logLists) 
+        logs = generateLogs(fileName) 
         #jobList = generateJobs(logLists)
 
         for log in logs:
-            print log['timestamp'].isoformat(), log['user'],
+            data, userData = generateData(log) 
+            data = generateScore(data)
+            bulkUpdate( log, userData, newUser, data, es )
 
-            userData, newUser = getUserData( log['user'], es )
-            #print json.dumps(userData, indent=4)
-            data, userData = generateData(log, userData) 
+def doWork(job):
+    userData, dataList = generateDataFromJob(job) 
+    dataList = [generateScore(data) for data in dataList]
+    return userData, dataList
+
+def doJob(jobList):
+    return [doWork(job) for job in jobList] 
+
+def runParallel(es):
+    fileNameList = generateFileNameList(startDate, endDate)
+    for fileName in fileNameList:
+        print('Loading %s ... (ETA:30s)'%(fileName))
+        
+        logs = generateLogs(fileName) 
+        jobList = generateJobs(logs)
+
+        
+        pool_size = multiprocessing.cpu_count()
+        pool = multiprocessing.Pool(processes = pool_size)
+        results = pool.map_async(doJob, jobList, chunksize=1)
+        pool.close()
+       
+        results.get() 
+        data, userData = generateData(log) 
 
             data = generateScore(data)
 
