@@ -2,6 +2,7 @@ import json, csv, codecs
 import time
 from datetime import date, timedelta
 from collections import deque
+from sys import stdout
 
 from file2log import generateLogs 
 from log2data import generateData, generateDataFromJob 
@@ -39,10 +40,16 @@ def generateJobs(logs):
     print('Split into %d jobs for multiprocessing ...'%(len(jobList)))
     return usersLog 
 
-def bulkUpdate( logList, userDataList, dataList ):
-    es = Elasticsearch(hosts=hosts, maxsize=maxThread)
+def bulkIndex( logList, userDataList, dataList ):
     
+    print('number of logs    :%d'%len(logList))
+    print('number of userData:%d'%len(userDataList))
+    print('number of data    :%d'%len(dataList))
+    
+    es = Elasticsearch(hosts=hosts, maxsize=maxThread)
     actions = []
+    maxActions = 5000
+
     for log in logList:
         idStr = '%s_%s_%s'%(log['timestamp'].isoformat(),
                             log['user'],log['service'])
@@ -54,16 +61,6 @@ def bulkUpdate( logList, userDataList, dataList ):
             '_source' : log
         }
         actions.append(action)
-        if len(actions) == 5000:
-            print('bulk indexing %d actions'%(len(actions))) 
-            helpers.bulk(es,actions)
-            del actions[0:len(actions)]
-    
-    #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread))
-    print('bulk indexing %d actions'%(len(actions))) 
-    helpers.bulk(es,actions)
-    del actions[0:len(actions)]
-  
 
     for userData in userDataList:
         action = {
@@ -74,19 +71,10 @@ def bulkUpdate( logList, userDataList, dataList ):
             '_source' : userData,
         }
         actions.append(action)
-        if len(actions) == 5000:
-            print('bulk indexing %d actions'%(len(actions))) 
-            helpers.bulk(es,actions)
-            del actions[0:len(actions)]
-
-    #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread))
-    print('bulk indexing %d actions'%(len(actions))) 
-    helpers.bulk(es,actions)
-    del actions[0:len(actions)]
 
     for data in dataList:
-        idStr = '%s_%s_%s_data'%(log['timestamp'].isoformat(),
-                            log['user'],log['service'])
+        idStr = '%s_%s_%s'%(data['log']['timestamp'].isoformat(),
+                            data['log']['user'],data['log']['service'])
         action = {
             '_op_type': 'index',
             '_index'  : indexName,
@@ -95,40 +83,55 @@ def bulkUpdate( logList, userDataList, dataList ):
             '_source' : data 
         }
         actions.append(action)
-        if len(actions) == 5000:
-            print('bulk indexing %d actions'%(len(actions))) 
-            helpers.bulk(es,actions)
-            del actions[0:len(actions)]
     
+    while len(actions) > maxActions:
+        stdout.write('bulk indexing..., %7d actions left \r'%(len(actions)))
+        stdout.flush()
+        helpers.bulk(es,actions[:maxActions])
+        del actions[:maxActions]
+    stdout.write('bulk indexing..., %7d actions left \n'%(len(actions))) 
     #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread))
-    print('bulk indexing %d actions'%(len(actions))) 
     helpers.bulk(es,actions)
-    del actions[0:len(actions)]
-
-    #es.indices.refresh(index=indexName)
-
+    del actions[:len(actions)]
+    
+    es.indices.refresh(index=indexName)
 
 def run():
     fileNameList = generateFileNameList(startDate, endDate)
     for fileName in fileNameList:
-        print('Loading %s ... (ETA:30s)'%(fileName))
         
+        print('Loading %s ... (ETA:20s)'%(fileName))
         logs = generateLogs(fileName) 
+        
+        logsNum = len(logs) 
+        print('Total Number of logs: %d'%(logsNum))
+        print('Generating data ... ')
+        
+        start_time = time.time()
+        
         userDataDict = {}
-        userDataList = []
         dataList = []
-        for log in logs:
-            print('%s %s'%(log['timestamp'], log['user']))
+        for i in xrange(len(logs)):
+            log = logs[i]
+            
+            if i%1000 == 0:
+                stdout.write('Used %.2f seconds, Processing %5d/%d log: "%s_%s_%s" %10s \r'
+                    % (time.time()-start_time, i, logsNum, log['timestamp'].isoformat(), 
+                       log['user'], log['service'], '' ))
+                stdout.flush()
+
             userData, data = generateData(log) 
             data = generateScore(data)
 
             userDataDict[ log['user'] ] = userData
             userDataList = userDataDict.values()
             dataList.append( data )
-        print('number of logs    :%d'%len(logs))
-        print('number of userData:%d'%len(userDataList))
-        print('number of data    :%d'%len(dataList))
-        bulkUpdate( logs, userDataList, dataList )
+
+        elapsed_time = time.time()-start_time
+        stdout.write('Used %.2f seconds, Processed %5d logs, Avg: %.2f logs/sec %30s \n'
+            %(elapsed_time, logsNum, logsNum/float(elapsed_time), ''))
+        
+        bulkIndex( logs, userDataList, dataList )
 
 
 def doJob(job):
@@ -150,7 +153,8 @@ def runParallel():
         pool.close()
         pool.join()       
 
-        
+        #TODO
+        ans = results.get()
         bulkUpdate( logs, userDataList, dataList )
 
 
