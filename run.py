@@ -149,8 +149,6 @@ def run():
         elapsed_time = time.time()-start_time
         stdout.write('Used %.2f seconds, Processed %5d logs, Avg: %.2f logs/sec %50s \n'
             %(elapsed_time, logsNum, logsNum/float(elapsed_time), ''))
-       
-
         
         start_time = time.time()
         bulkIndex( logs, userDataList, dataList )
@@ -184,6 +182,7 @@ def runParallel():
         logs = generateLogs(fileName) 
         jobList = generateJobs(logs)
         
+        print('\nGenerating data ... ')
         pool_size = multiprocessing.cpu_count()
         pool = multiprocessing.Pool(processes = pool_size)
         results = pool.map_async(doJob, jobList.items(), chunksize=1)
@@ -204,21 +203,13 @@ def runParallel():
         pool.close()
         pool.join()       
        
-        userDataDict = {}
         userDataList = []
         allDataList = []
         for userData, dataList in results.get():
-            userDataDict[ userData['user'] ] = userData
             userDataList.append(userData)
             allDataList.extend(dataList)
         
-
-        start_time = time.time()
         bulkIndex( logs, userDataList, allDataList )
-        elapsed_time = time.time()-start_time
-        indexNum = len(logs)+len(userDataList)+len(allDataList)
-        print('Used %.2f seconds, Processed %7d indexs, Avg: %.2f indexs/sec %50s'
-            %(elapsed_time, indexNum, indexNum/float(elapsed_time), ''))
 
 
 if __name__ == '__main__':
