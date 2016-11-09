@@ -50,7 +50,7 @@ def generateData(log, userData):
         'log':log,
         'featureVector':featureVector,
         'scores':{},
-        'label':{}
+        'label':log['label']
     }
      
     update( userData['services'], log['service'], log['timestamp'] )

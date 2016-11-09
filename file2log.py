@@ -4,7 +4,7 @@ from collections import defaultdict
 from operator import itemgetter
 
 services = ['SMTP'] # 0.5%
-#services = ['SMTP', 'VPN', 'Exchange'] # 1%
+#services = ['SMTP', 'VPN', 'Exchange'] # 2%
 #services = ['SMTP', 'VPN', 'Exchange', 'POP3'] # 20%
 #services = ['SMTP', 'VPN', 'Exchange', 'POP3', 'OWA'] # 100% Don't touch this unless certain
 table = string.maketrans('.', '_')
@@ -44,7 +44,7 @@ def generateLog(logList):
         'city'     : logList[7],
         'county'   : logList[8],
         'nation'   : logList[9],
-        'label'    : {'analyst':None, 'randomForest':None} 
+        'label'    : {'analyst':None} 
     }
     return log
 

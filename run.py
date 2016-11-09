@@ -34,6 +34,7 @@ def generateFileNameList(startDate, endDate):
 
 def generateBulkActions( logList, userDataList, dataList ):
     actions = []
+    userDataActions = []
     
     for userData in userDataList:
         action = {
@@ -43,7 +44,7 @@ def generateBulkActions( logList, userDataList, dataList ):
             '_id'     : userData['user'], 
             '_source' : userData,
         }
-        actions.append(action)
+        userDataActions.append(action)
     for log in logList:
         idStr = '%s_%s_%s'%(log['timestamp'].isoformat(),
                             log['user'],log['service'])
@@ -67,41 +68,53 @@ def generateBulkActions( logList, userDataList, dataList ):
         }
         actions.append(action)
     
-    return actions 
+    return actions, userDataActions 
 
+def doBulk( chunkSize, actions, timeOut ):
+    actionNum = len(actions)
+    start_time = time.time()
+    
+    while len(actions) > chunkSize:
+        stdout.write('Used %.2f seconds, %7d/%7d actions left \r'
+                    %(time.time()-start_time, len(actions), actionNum))
+        stdout.flush()
+        successNum, item = helpers.bulk(es,actions[:chunkSize], refresh='false', request_timeout=timeOut)
+        del actions[:chunkSize]
+    
+    successNum, item = helpers.bulk(es,actions, refresh='false', request_timeout=timeOut)
+    del actions[:len(actions)]
+    
+    #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread, chunk_size=1000, request_timeout=30))
+        
+    elapsed_time = time.time()-start_time
+    print('Used %.2f seconds, Processed %7d actions, Avg: %.2f actions/sec %50s'
+        %(elapsed_time, actionNum, actionNum/float(elapsed_time), ''))
 
 def bulkIndex( logList, userDataList, dataList ):
     print('\nBulk Indexing ...') 
-    print('number of userData:%8d'%len(userDataList))
-    print('number of logs    :%8d'%len(logList))
-    print('number of data    :%8d'%len(dataList))
 
-    actions = generateBulkActions( logList, userDataList, dataList )
-    totalActions = len(actions)
+
+    actions, userDataActions = generateBulkActions( logList, userDataList, dataList )
+
 
     es = Elasticsearch(hosts=hosts, maxsize=maxThread)
     setting = {"index":{"refresh_interval":"-1"}}
     es.indices.put_settings(index=indexName, body=setting)
 
-    while len(actions) > chunkSize:
-        stdout.write('Bulk indexing... %7d/%7d actions left \r'
-                    %(len(actions), totalActions))
-        stdout.flush()
-        successNum, item = helpers.bulk(es,actions[:chunkSize], refresh='false', request_timeout=180)
-        del actions[:chunkSize]
- 
-    
-    #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread, chunk_size=1000, request_timeout=30))
-    successNum, item = helpers.bulk(es,actions)
-    del actions[:len(actions)]
+    print('number of userData:%8d'%len(userDataList))
+    doBulk( 100, userDataActions, 180 ) #TODO: Needed to be tuned accordingly
+
+    print('number of logs    :%8d'%len(logList))
+    print('number of data    :%8d'%len(dataList))
+    doBulk( 500, actions, 30 )
+
 
     setting = {"index":{"refresh_interval":"1s"}}
     es.indices.put_settings(index=indexName, body=setting)
-    
+
     time.sleep(2)
     docNum = es.count(index=indexName)['count']
-    stdout.write('Bulk indexing finished, doc_count:%d %40s\n' % (docNum, ''))
-    
+    print('Bulk indexing finished, doc_count:%d %40s\n' % (docNum, ''))
 
 def run():
     fileNameList = generateFileNameList(startDate, endDate)
@@ -191,12 +204,14 @@ def runParallel():
         pool.close()
         pool.join()       
        
-
+        userDataDict = {}
         userDataList = []
         allDataList = []
         for userData, dataList in results.get():
+            userDataDict[ userData['user'] ] = userData
             userDataList.append(userData)
             allDataList.extend(dataList)
+        
 
         start_time = time.time()
         bulkIndex( logs, userDataList, allDataList )
@@ -216,7 +231,6 @@ if __name__ == '__main__':
              '192.168.1.6:9200',
              '192.168.1.10:9200']
     maxThread = 500000
-    chunkSize = 500
     
     es = Elasticsearch(hosts=hosts, maxsize=maxThread)
     es.indices.create(index=indexName,ignore=[400])
