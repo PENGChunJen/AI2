@@ -67,7 +67,12 @@ def generateData(log):
 
 #TODO
 def generateDataFromJob(job):
-    # es =  
-    userData = getUserData( log['user'], es )
+    userId = job[0]
+    es = Elasticsearch(hosts=hosts, maxsize=maxThread)
+    userData = getUserData(userId, es)
     dataList = []
+
+    for log in job[1]:
+        pass
+
     return userData, dataList
