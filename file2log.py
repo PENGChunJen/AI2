@@ -3,8 +3,10 @@ from datetime import datetime
 from collections import defaultdict
 from operator import itemgetter
 
-services = ['SMTP']#, 'VPN', 'Exchange'] 
-#services = ['SMTP', 'VPN', 'Exchange', 'POP3', 'OWA']
+services = ['SMTP'] # 0.5%
+#services = ['SMTP', 'VPN', 'Exchange'] # 1%
+#services = ['SMTP', 'VPN', 'Exchange', 'POP3'] # 20%
+#services = ['SMTP', 'VPN', 'Exchange', 'POP3', 'OWA'] # 100% Don't touch this unless certain
 table = string.maketrans('.', '_')
 
 def handleException( logList ):
@@ -19,12 +21,12 @@ def handleException( logList ):
 
     #empty user name
     if logList[3] == '':
-        print('Format Error: user should encode in ascii  "%s"'%(','.join(logList)))
+        print('Format Error: user cannot be empty  "%s"'%(','.join(logList)))
         return True
 
     return False
 
-# Avoid dot(.), since dot cannot be in ES name.field
+# Avoid dot(.), since dot cannot be in ES name field
 def translate(s):
     return s.translate(table)
     #return s.translate(string.maketrans('.', '_'))

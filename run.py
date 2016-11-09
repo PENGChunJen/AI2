@@ -34,7 +34,16 @@ def generateFileNameList(startDate, endDate):
 
 def generateBulkActions( logList, userDataList, dataList ):
     actions = []
-
+    
+    for userData in userDataList:
+        action = {
+            '_op_type': 'index',
+            '_index'  : indexName,
+            '_type'   : 'userData',
+            '_id'     : userData['user'], 
+            '_source' : userData,
+        }
+        actions.append(action)
     for log in logList:
         idStr = '%s_%s_%s'%(log['timestamp'].isoformat(),
                             log['user'],log['service'])
@@ -44,15 +53,6 @@ def generateBulkActions( logList, userDataList, dataList ):
             '_type'   : 'log',
             '_id'     : idStr, 
             '_source' : log
-        }
-        actions.append(action)
-    for userData in userDataList:
-        action = {
-            '_op_type': 'index',
-            '_index'  : indexName,
-            '_type'   : 'userData',
-            '_id'     : userData['user'], 
-            '_source' : userData,
         }
         actions.append(action)
     for data in dataList:
@@ -69,17 +69,12 @@ def generateBulkActions( logList, userDataList, dataList ):
     
     return actions 
 
-def printStatus( actionsNum, totalActions, docNum ):
-    #stdout.write('Bulk indexing... %7d actions left, doc_count:%d \n'
-    stdout.write('Bulk indexing... %7d/%7d actions left, doc_count:%d \r'
-                %(actionsNum, totalActions, docNum))
-    stdout.flush()
 
 def bulkIndex( logList, userDataList, dataList ):
     print('\nBulk Indexing ...') 
-    print('number of logs    :%d'%len(logList))
-    print('number of userData:%d'%len(userDataList))
-    print('number of data    :%d'%len(dataList))
+    print('number of userData:%8d'%len(userDataList))
+    print('number of logs    :%8d'%len(logList))
+    print('number of data    :%8d'%len(dataList))
 
     actions = generateBulkActions( logList, userDataList, dataList )
     totalActions = len(actions)
@@ -89,9 +84,10 @@ def bulkIndex( logList, userDataList, dataList ):
     es.indices.put_settings(index=indexName, body=setting)
 
     while len(actions) > chunkSize:
-        docNum = es.count(index=indexName)['count']
-        printStatus( len(actions), totalActions, docNum )
-        successNum, item = helpers.bulk(es,actions[:chunkSize], refresh='false', request_timeout=60)
+        stdout.write('Bulk indexing... %7d/%7d actions left \r'
+                    %(len(actions), totalActions))
+        stdout.flush()
+        successNum, item = helpers.bulk(es,actions[:chunkSize], refresh='false', request_timeout=180)
         del actions[:chunkSize]
  
     
@@ -170,7 +166,7 @@ def doJob(userDataTuple):
 def runParallel():
     fileNameList = generateFileNameList(startDate, endDate)
     for fileName in fileNameList:
-        print('\nLoading %s ... (ETA:30s)'%(fileName))
+        print('\nLoading %s ... (ETA:20s)'%(fileName))
         
         logs = generateLogs(fileName) 
         jobList = generateJobs(logs)
@@ -178,12 +174,26 @@ def runParallel():
         pool_size = multiprocessing.cpu_count()
         pool = multiprocessing.Pool(processes = pool_size)
         results = pool.map_async(doJob, jobList.items(), chunksize=1)
+
+        start_time = time.time()
+        jobNum = len(jobList)
+        while (True):
+            if(results.ready()): break
+            stdout.write('Used %.2f seconds, %5d/%d jobs left ... %10s \r'
+                % (time.time()-start_time, results._number_left, jobNum, ''))
+            stdout.flush()
+            time.sleep(0.5)
+        
+        elapsed_time = time.time()-start_time
+        stdout.write('Used %.2f seconds, Processed %5d logs, Avg: %.2f logs/sec %50s \n'
+            %(elapsed_time, len(logs), len(logs)/float(elapsed_time), ''))
+        
         pool.close()
         pool.join()       
+       
 
         userDataList = []
         allDataList = []
-        #res = results.get()
         for userData, dataList in results.get():
             userDataList.append(userData)
             allDataList.extend(dataList)
@@ -191,7 +201,7 @@ def runParallel():
         start_time = time.time()
         bulkIndex( logs, userDataList, allDataList )
         elapsed_time = time.time()-start_time
-        indexNum = len(logs)+len(userDataList)+len(dataList)
+        indexNum = len(logs)+len(userDataList)+len(allDataList)
         print('Used %.2f seconds, Processed %7d indexs, Avg: %.2f indexs/sec %50s'
             %(elapsed_time, indexNum, indexNum/float(elapsed_time), ''))
 
@@ -208,10 +218,9 @@ if __name__ == '__main__':
     maxThread = 500000
     chunkSize = 500
     
-    #client = connections.create_connection(hosts=hosts, maxsize=maxThread)
     es = Elasticsearch(hosts=hosts, maxsize=maxThread)
     es.indices.create(index=indexName,ignore=[400])
     
-    run()
-    #runParallel()
+    #run()
+    runParallel()
 
