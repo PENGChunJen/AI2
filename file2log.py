@@ -1,10 +1,33 @@
-import csv, codecs
+import csv, codecs, string
 from datetime import datetime
 from collections import defaultdict
 from operator import itemgetter
 
-services = ['SMTP'] 
+services = ['SMTP']#, 'VPN', 'Exchange'] 
 #services = ['SMTP', 'VPN', 'Exchange', 'POP3', 'OWA']
+table = string.maketrans('.', '_')
+
+def handleException( logList ):
+    #Filter by services
+    if logList[0] not in services: 
+        return True 
+
+    #csv not haveing 10 columns
+    if len(logList) != 10:
+        print('Format Error: Need 10 colums "%s"'%(','.join(logList)))
+        return True
+
+    #empty user name
+    if logList[3] == '':
+        print('Format Error: user should encode in ascii  "%s"'%(','.join(logList)))
+        return True
+
+    return False
+
+# Avoid dot(.), since dot cannot be in ES name.field
+def translate(s):
+    return s.translate(table)
+    #return s.translate(string.maketrans('.', '_'))
 
 def generateLog(logList):
     timestampStr = logList[1]+'T'+logList[2]
@@ -12,11 +35,10 @@ def generateLog(logList):
     log = {
         'service'  : logList[0],
         'timestamp': timestamp,
-        'user'     : logList[3],
-        'server'   : logList[4],
-        #'IP'       : logList[5],
-        'IP'       : '0,0,0,0',
-        'device'   : logList[6],
+        'user'     : translate(logList[3]),
+        'server'   : translate(logList[4]),
+        'IP'       : translate(logList[5]),
+        'device'   : translate(logList[6]),
         'city'     : logList[7],
         'county'   : logList[8],
         'nation'   : logList[9],
@@ -28,16 +50,17 @@ def generateLogs(fileName):
     inputFile = codecs.open(fileName, 'r', 
                     encoding='ascii', errors='ignore') 
     logLists = list(csv.reader(inputFile))
-    #print('Total Number of logs: %d'%(len(logLists)))
+    print('Total Number of raw logs: %d'%(len(logLists)))
+    print('\nGenerating logs ... (ETA:%ds)'%(len(logLists)/45000))
     
     logs = []
     for logList in logLists:
-        #Filter by services
-        if logList[0] not in services: continue
+        if handleException( logList ): continue
         
         log = generateLog(logList)
         logs.append(log)
     
     #Sort by timestamp 
+    print('Sorting logs by timestamps ...')
     logsSortByTime = sorted(logs, key = itemgetter('timestamp'))
     return logsSortByTime
