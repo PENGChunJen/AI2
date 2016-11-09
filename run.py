@@ -41,8 +41,7 @@ def generateJobs(logs):
             usersLog[user].append(log)
         else:
             usersLog[user] = [ log ]
-    jobList = usersLog.values()
-    print('Split into %d jobs for multiprocessing ...'%(len(jobList)))
+    print('Split into %d jobs for multiprocessing ...'%(len(usersLog.values())))
     return usersLog 
 
 def generateBulkActions( logList, userDataList, dataList ):
@@ -178,13 +177,13 @@ def runParallel():
         
         pool_size = multiprocessing.cpu_count()
         pool = multiprocessing.Pool(processes = pool_size)
-        results = pool.map_async(doJob, jobList, chunksize=1)
+        results = pool.map_async(doJob, jobList.items(), chunksize=1)
         pool.close()
         pool.join()       
 
         #TODO
         ans = results.get()
-        bulkUpdate( logs, userDataList, dataList )
+        #bulkUpdate( logs, userDataList, dataList )
 
 
 if __name__ == '__main__':
