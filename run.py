@@ -1,5 +1,6 @@
 import json, csv, codecs
 import time
+import multiprocessing
 from datetime import date, timedelta
 from collections import deque
 from sys import stdout
@@ -14,7 +15,7 @@ from elasticsearch import Elasticsearch, helpers
 indexName = 'ai2_v2.0'
 #indexName = 'ai2_test'
 startDate = date(2016,6,1) 
-endDate = date(2016,6,3) 
+endDate = date(2016,6,1) 
 whiteList = ['140.112.*', '209,85,*']
 logPath = 'rawlog'
 
@@ -148,17 +149,20 @@ def run():
         print('Used %.2f seconds, Processed %7d indexs, Avg: %.2f indexs/sec %50s'
             %(elapsed_time, indexNum, indexNum/float(elapsed_time), ''))
 
-
 def generateJobs(logs):
-    usersLog = defaultdict(list)
+    usersLog = {}
     #Split by User
     for log in logs:
-        usersLog[ log['user'] ].append(log)
-    print('Split into %d jobs for multiprocessing ...'%(len(jobList)))
+        user = log['user']
+        if user in usersLog:
+            usersLog[user].append(log)
+        else:
+            usersLog[user] = [ log ]
+    print('Split into %d jobs for multiprocessing ...'%(len(usersLog.values())))
     return usersLog 
 
-def doJob(job):
-    userData, dataList = generateDataFromJob(job) 
+def doJob(userDataTuple):
+    userData, dataList = generateDataFromJob(userDataTuple) 
     dataList = [generateScore(data) for data in dataList]
     return userData, dataList
 
@@ -172,13 +176,17 @@ def runParallel():
         
         pool_size = multiprocessing.cpu_count()
         pool = multiprocessing.Pool(processes = pool_size)
-        results = pool.map_async(doJob, jobList, chunksize=1)
+        results = pool.map_async(doJob, jobList.items(), chunksize=1)
         pool.close()
         pool.join()       
 
-        #TODO
-        ans = results.get()
-        bulkUpdate( logs, userDataList, dataList )
+        userDataList = []
+        allDataList = []
+        userData, dataList = results.get()
+        userDataList.append(userData)
+        allDataList.extend(dataList)
+
+        bulkUpdate( logs, userDataList, allDataList )
 
 
 if __name__ == '__main__':
@@ -197,5 +205,6 @@ if __name__ == '__main__':
     es = Elasticsearch(hosts=hosts, maxsize=maxThread)
     es.indices.create(index=indexName,ignore=[400])
     
-    run()
+    #run()
+    runParallel()
 
