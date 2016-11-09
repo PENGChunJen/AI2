@@ -6,7 +6,7 @@ from collections import deque
 from sys import stdout
 
 from file2log import generateLogs 
-from log2data import generateData, generateDataFromJob 
+from log2data import getUserData, generateData, generateDataFromJob 
 from data2score import generateScore
 
 from elasticsearch import Elasticsearch, helpers
@@ -123,13 +123,14 @@ def run():
         for i in xrange(len(logs)):
             log = logs[i]
             
-            if i%1000 == 0:
+            if i%100 == 0:
                 stdout.write('Used %.2f seconds, Processing %5d/%d log: "%s_%s_%s_%s" %10s \r'
                     % (time.time()-start_time, i, logsNum, log['timestamp'].isoformat(), 
                        log['user'], log['service'], log['IP'], '' ))
                 stdout.flush()
 
-            userData, data = generateData(log) 
+            userData = getUserData( log['user'] )
+            userData, data = generateData(log, userData) 
             data = generateScore(data)
 
             userDataDict[ log['user'] ] = userData
@@ -169,7 +170,7 @@ def doJob(userDataTuple):
 def runParallel():
     fileNameList = generateFileNameList(startDate, endDate)
     for fileName in fileNameList:
-        print('Loading %s ... (ETA:30s)'%(fileName))
+        print('\nLoading %s ... (ETA:30s)'%(fileName))
         
         logs = generateLogs(fileName) 
         jobList = generateJobs(logs)
@@ -182,11 +183,17 @@ def runParallel():
 
         userDataList = []
         allDataList = []
-        userData, dataList = results.get()
-        userDataList.append(userData)
-        allDataList.extend(dataList)
+        #res = results.get()
+        for userData, dataList in results.get():
+            userDataList.append(userData)
+            allDataList.extend(dataList)
 
-        bulkUpdate( logs, userDataList, allDataList )
+        start_time = time.time()
+        bulkIndex( logs, userDataList, allDataList )
+        elapsed_time = time.time()-start_time
+        indexNum = len(logs)+len(userDataList)+len(dataList)
+        print('Used %.2f seconds, Processed %7d indexs, Avg: %.2f indexs/sec %50s'
+            %(elapsed_time, indexNum, indexNum/float(elapsed_time), ''))
 
 
 if __name__ == '__main__':
@@ -205,6 +212,6 @@ if __name__ == '__main__':
     es = Elasticsearch(hosts=hosts, maxsize=maxThread)
     es.indices.create(index=indexName,ignore=[400])
     
-    #run()
-    runParallel()
+    run()
+    #runParallel()
 

@@ -1,4 +1,3 @@
-from collections import defaultdict
 from elasticsearch import Elasticsearch
 # Define a defualt Elasticsearch client
 indexName = 'ai2_v2.0'
@@ -24,7 +23,8 @@ def generateUserData(user):
     }
     return userData
 
-def getUserData(user, es):
+def getUserData(user):
+    es = Elasticsearch(hosts=hosts, maxsize=maxThread)
     res = es.get( index = indexName, 
                   doc_type = 'userData',
                   id = user,
@@ -44,9 +44,7 @@ def update( Dict, key, value ):
         Dict[key] = [value]
 
 #TODO
-def generateData(log):
-    es = Elasticsearch(hosts=hosts, maxsize=maxThread)
-    userData = getUserData( log['user'], es )
+def generateData(log, userData):
     featureVector = [0.0 for x in xrange(24)]
     data = {
         'log':log,
@@ -54,7 +52,6 @@ def generateData(log):
         'scores':{},
         'label':{}
     }
-    
      
     update( userData['services'], log['service'], log['timestamp'] )
     update( userData['IPs'], log['IP'], log['timestamp'] )
@@ -65,14 +62,15 @@ def generateData(log):
     update( userData['timestamps'], log['timestamp'].date().isoformat(), log ) #??
     return userData, data
 
-#TODO
-def generateDataFromJob(job):
-    userId = job[0]
-    es = Elasticsearch(hosts=hosts, maxsize=maxThread)
-    userData = getUserData(userId, es)
+def generateDataFromJob(userDataTuple):
+    userId = userDataTuple[0]
+    logList = userDataTuple[1]
+    
+    userData = getUserData( userId )
+    
     dataList = []
-
-    for log in job[1]:
-        pass
+    for log in logList:
+        userData, data = generateData(log, userData)
+        dataList.append(data)
 
     return userData, dataList
