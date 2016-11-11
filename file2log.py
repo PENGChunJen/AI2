@@ -1,10 +1,11 @@
-import csv, codecs, string
+import csv, codecs, string, time
+from sys import stdout
 from datetime import datetime
 from collections import defaultdict
 from operator import itemgetter
 
-services = ['SMTP'] # 0.5%
-#services = ['SMTP', 'VPN', 'Exchange'] # 2%
+#services = ['SMTP'] # 0.5%
+services = ['SMTP', 'VPN', 'Exchange'] # 2%
 #services = ['SMTP', 'VPN', 'Exchange', 'POP3'] # 20%
 #services = ['SMTP', 'VPN', 'Exchange', 'POP3', 'OWA'] # 100% Don't touch this unless certain
 table = string.maketrans('.', '_')
@@ -48,21 +49,37 @@ def generateLog(logList):
     }
     return log
 
+def getData(fileName):
+    with codecs.open(fileName, 'r', encoding='ascii', errors='ignore') as csvFile:
+        dataReader = csv.reader(csvFile)
+        for row in dataReader:
+            if handleException( row ): continue
+            yield list(row)
+
 def generateLogs(fileName):
-    inputFile = codecs.open(fileName, 'r', 
-                    encoding='ascii', errors='ignore') 
-    logLists = list(csv.reader(inputFile))
-    print('Total Number of raw logs: %d'%(len(logLists)))
-    print('\nGenerating logs ... (ETA:%ds)'%(len(logLists)/45000))
+    print('\nGenerating logs of services: %s... '%(', '.join(services)))
+    start_time = time.time()
     
     logs = []
-    for logList in logLists:
-        if handleException( logList ): continue
-        
+    count = 0
+    for logList in getData(fileName):
         log = generateLog(logList)
         logs.append(log)
+        
+        count += 1
+        if count % 1000 == 0:
+            stdout.write('Used %.2f seconds, Generated %7d logs ... %10s \r'
+                % (time.time()-start_time, count, ''))
+            stdout.flush()
+        
     
+    elapsed_time = time.time()-start_time
+    print('Used %.2f seconds, Generated %7d logs, Avg: %.2f logs/sec' 
+            % ( elapsed_time, count, count/elapsed_time))
     #Sort by timestamp 
     print('Sorting logs by timestamps ...')
     logsSortByTime = sorted(logs, key = itemgetter('timestamp'))
     return logsSortByTime
+
+if __name__ == '__main__':
+    generateLogs('rawlog/all-20160601-geo.log')
