@@ -119,7 +119,7 @@ def bulkIndex( logList, userDataList, dataList ):
 def run():
     fileNameList = generateFileNameList(startDate, endDate)
     for fileName in fileNameList:
-        print('\nLoading %s ... (ETA:20s)'%(fileName))
+        print('\nLoading %s ... '%(fileName))
         logs = generateLogs(fileName) 
         
         logsNum = len(logs) 
@@ -177,7 +177,7 @@ def doJob(userDataTuple):
 def runParallel():
     fileNameList = generateFileNameList(startDate, endDate)
     for fileName in fileNameList:
-        print('\nLoading %s ... (ETA:20s)'%(fileName))
+        print('\nLoading %s ...'%(fileName))
         
         logs = generateLogs(fileName) 
         jobList = generateJobs(logs)
@@ -223,7 +223,7 @@ if __name__ == '__main__':
              '192.168.1.10:9200']
     maxThread = 500000
     
-    es = Elasticsearch(hosts=hosts, maxsize=maxThread)
+    es = Elasticsearch(hosts=hosts)
     es.indices.create(index=indexName,ignore=[400])
     
     #run()
