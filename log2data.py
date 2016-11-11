@@ -1,4 +1,4 @@
-import marshal
+import cPickle
 from elasticsearch import Elasticsearch
 # Define a defualt Elasticsearch client
 indexName = 'ai2_v2.0'
@@ -34,7 +34,8 @@ def getUserData(user):
     if not res['found']:
         userData = generateUserData(user)
     else:
-        userData = res['_source']
+        #userData = res['_source']
+        userData = cPickle.loads(str(res['_source']['blob']))
         
     return userData
 
