@@ -83,11 +83,11 @@ def generateData(log, userData):
     }
 
     featureVector[:3] = computeTimesFeatures(userData, log)
-    featureVector[3] = False if log['device'] in userData['devices'] else True
-    featureVector[4] = False if log['IP'] in userData['IPs'] else True
-    featureVector[5] = False if log['city'] in userData['cities'] else True
-    featureVector[6] = False if log['county'] in userData['counties'] else True
-    featureVector[7] = False if log['nation'] in userData['nations'] else True
+    featureVector[3] = 0.0 if log['device'] in userData['devices'] else 1.0
+    featureVector[4] = 0.0 if log['IP'] in userData['IPs'] else 1.0
+    featureVector[5] = 0.0 if log['city'] in userData['cities'] else 1.0
+    featureVector[6] = 0.0 if log['county'] in userData['counties'] else 1.0
+    featureVector[7] = 0.0 if log['nation'] in userData['nations'] else 1.0
      
     update(userData['services'], log['service'], log['timestamp'])
     update(userData['IPs'], log['IP'], log['timestamp'])
@@ -95,7 +95,7 @@ def generateData(log, userData):
     update(userData['cities'], log['city'], log['timestamp'])
     update(userData['counties'], log['county'], log['timestamp'])
     update(userData['nations'], log['nation'], log['timestamp'])
-    update(userData['timestamps'], log['timestamp'].date().isoformat(), log) #??
+    update(userData['timestamps'], log['timestamp'].date().isoformat(), log)
 
     return userData, data
 
