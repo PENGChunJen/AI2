@@ -1,3 +1,4 @@
+import marshal
 from elasticsearch import Elasticsearch
 # Define a defualt Elasticsearch client
 indexName = 'ai2_v2.0'
@@ -53,20 +54,21 @@ def generateData(log, userData):
         'label':log['label']
     }
      
-    update( userData['services'], log['service'], log['timestamp'] )
-    update( userData['IPs'], log['IP'], log['timestamp'] )
-    update( userData['devices'], log['device'], log['timestamp'] )
-    update( userData['cities'], log['city'], log['timestamp'] )
-    update( userData['counties'], log['county'], log['timestamp'] )
-    update( userData['nations'], log['nation'], log['timestamp'] )
-    update( userData['timestamps'], log['timestamp'].date().isoformat(), log ) #??
+    update(userData['services'], log['service'], log['timestamp'])
+    update(userData['IPs'], log['IP'], log['timestamp'])
+    update(userData['devices'], log['device'], log['timestamp'])
+    update(userData['cities'], log['city'], log['timestamp'])
+    update(userData['counties'], log['county'], log['timestamp'])
+    update(userData['nations'], log['nation'], log['timestamp'])
+    update(userData['timestamps'], log['timestamp'].date().isoformat(), log) #??
+
     return userData, data
 
 def generateDataFromJob(userDataTuple):
     userId = userDataTuple[0]
     logList = userDataTuple[1]
     
-    userData = getUserData( userId )
+    userData = getUserData(userId)
     
     dataList = []
     for log in logList:

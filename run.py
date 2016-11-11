@@ -1,6 +1,7 @@
 import json, csv, codecs
 import time
 import multiprocessing
+import cPickle
 from datetime import date, timedelta
 from collections import deque
 from sys import stdout
@@ -12,7 +13,7 @@ from data2score import generateScore
 from elasticsearch import Elasticsearch, helpers
 
 # Global vairables
-indexName = 'ai2_v2.0'
+indexName = 'ai2_v2.0_lschyi'
 #indexName = 'ai2_test'
 startDate = date(2016,6,1) 
 endDate = date(2016,6,1) 
@@ -42,7 +43,7 @@ def generateBulkActions( logList, userDataList, dataList ):
             '_index'  : indexName,
             '_type'   : 'userData',
             '_id'     : userData['user'], 
-            '_source' : userData,
+            '_source' : { 'blob': cPickle.dumps(userData)},
         }
         userDataActions.append(action)
     for log in logList:
@@ -102,7 +103,7 @@ def bulkIndex( logList, userDataList, dataList ):
     es.indices.put_settings(index=indexName, body=setting)
 
     print('number of userData:%8d'%len(userDataList))
-    doBulk( 100, userDataActions, 180 ) #TODO: Needed to be tuned accordingly
+    doBulk( 500, userDataActions, 180 ) #TODO: Needed to be tuned accordingly
 
     print('number of logs    :%8d'%len(logList))
     print('number of data    :%8d'%len(dataList))
