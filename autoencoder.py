@@ -14,113 +14,100 @@ import tensorflow as tf
 import numpy as np
 import os, random, json, operator
 from operator import itemgetter
-import cPickle as pickle
+import cPickle 
 from json import encoder
 encoder.FLOAT_REPR = lambda o: format(o, '.6f')
 
-def initialization(sess, learning_rate):
-    n_input = 8
-    n_hidden_1 = 4
-    n_hidden_2 = 2
-    X = tf.placeholder('float', [None, n_input])
-    weights = {'encoder_h1': tf.Variable(tf.random_normal([n_input, n_hidden_1])),
-     'encoder_h2': tf.Variable(tf.random_normal([n_hidden_1, n_hidden_2])),
-     'decoder_h1': tf.Variable(tf.random_normal([n_hidden_2, n_hidden_1])),
-     'decoder_h2': tf.Variable(tf.random_normal([n_hidden_1, n_input]))}
-    biases = {'encoder_b1': tf.Variable(tf.random_normal([n_hidden_1])),
-     'encoder_b2': tf.Variable(tf.random_normal([n_hidden_2])),
-     'decoder_b1': tf.Variable(tf.random_normal([n_hidden_1])),
-     'decoder_b2': tf.Variable(tf.random_normal([n_input]))}
+learning_rate = 0.01
+n_input = 24 
+n_hidden_1 = 12 
+n_hidden_2 = 6
+X = tf.placeholder('float', [None, n_input])
+weights = {
+    'encoder_h1': tf.Variable(tf.random_normal([n_input, n_hidden_1])),
+    'encoder_h2': tf.Variable(tf.random_normal([n_hidden_1, n_hidden_2])),
+    'decoder_h1': tf.Variable(tf.random_normal([n_hidden_2, n_hidden_1])),
+    'decoder_h2': tf.Variable(tf.random_normal([n_hidden_1, n_input]))
+}
+biases = {
+    'encoder_b1': tf.Variable(tf.random_normal([n_hidden_1])),
+    'encoder_b2': tf.Variable(tf.random_normal([n_hidden_2])),
+    'decoder_b1': tf.Variable(tf.random_normal([n_hidden_1])),
+    'decoder_b2': tf.Variable(tf.random_normal([n_input]))
+}
 
-    def encoder(x):
-        layer_1 = tf.nn.sigmoid(tf.add(tf.matmul(x, weights['encoder_h1']), biases['encoder_b1']))
-        layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, weights['encoder_h2']), biases['encoder_b2']))
-        return layer_2
+def encoder(x):
+    layer_1 = tf.nn.sigmoid(tf.add(tf.matmul(x, weights['encoder_h1']), biases['encoder_b1']))
+    layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, weights['encoder_h2']), biases['encoder_b2']))
+    return layer_2
 
-    def decoder(x):
-        layer_1 = tf.nn.sigmoid(tf.add(tf.matmul(x, weights['decoder_h1']), biases['decoder_b1']))
-        layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, weights['decoder_h2']), biases['decoder_b2']))
-        return layer_2
+def decoder(x):
+    layer_1 = tf.nn.sigmoid(tf.add(tf.matmul(x, weights['decoder_h1']), biases['decoder_b1']))
+    layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, weights['decoder_h2']), biases['decoder_b2']))
+    return layer_2
 
-    encoder_op = encoder(X)
-    decoder_op = decoder(encoder_op)
-    y_pred = decoder_op
-    y_true = X
-    cost = tf.reduce_mean(tf.pow(y_true - y_pred, 2))
-    optimizer = tf.train.RMSPropOptimizer(learning_rate).minimize(cost)
-    init = tf.initialize_all_variables()
-    sess.run(init)
-    return (sess,
-     X,
-     y_pred,
-     cost,
-     optimizer)
+encoder_op = encoder(X)
+decoder_op = decoder(encoder_op)
+y_pred = decoder_op
+y_true = X
+cost = tf.reduce_mean(tf.pow(y_true - y_pred, 2))
+optimizer = tf.train.RMSPropOptimizer(learning_rate).minimize(cost)
 
 
-def optimization(sess, training_features, testing_features, X, y_pred, cost, optimizer, training_epochs, batch_size, display_step):
-    total_batch = int(len(training_features) / batch_size)
+def optimization(sess, train, validation):
+    training_epochs = 2000
+    batch_size = 256 
+    display_step = 100
+    total_batch = int(len(train) / batch_size)
     for epoch in range(training_epochs):
         start = 0
         for i in xrange(1, total_batch):
             end = i * batch_size
-            batch_xs = training_features[start:end]
+            batch_xs = train[start:end]
             _, c = sess.run([optimizer, cost], feed_dict={X: batch_xs})
             start = end + 1
 
         if epoch % display_step == 0:
-            print('Epoch:', '%04d' % (epoch + 1), 'cost=', '{:.9f}'.format(c))
+            print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.9f}'.format(c/len(train)))
 
     print('Optimization Finished!')
-    encode_decode, test_cost = sess.run([y_pred, cost], feed_dict={X: testing_features})
-    print('testing features avg cost =', '{:.9f}\n'.format(test_cost))
+    encode_decode, test_cost = sess.run([y_pred, cost], feed_dict={X: validation})
+    print('Validation  cost =', '{:.9f}\n'.format(test_cost/len(validation)))
     return sess
 
-
-def autoencoder( training_data, log_pairs):
+def train(trainingData):
     print('\nBuilding Autoencoder...')
-    score_list = []
-    #features = [ p[1] for p in log_pairs ]
-    num_training = int(len(training_data) * 0.9)
-    random.shuffle(training_data)
-    training_features = training_data[:num_training]
-    testing_features = training_data[num_training:]
-    learning_rate = 0.01
-    training_epochs = 2000
-    batch_size = 256 if num_training >= 2560 else int(num_training / 10)
-    display_step = 100
-    print('total   :', len(training_data))
-    print('training:', len(training_features))
-    print('testing :', len(testing_features))
-    sess = tf.Session()
-    sess, X, y_pred, cost, optimizer = initialization(sess, learning_rate)
-    sess = optimization(sess, training_features, testing_features, X, y_pred, cost, optimizer, training_epochs, batch_size, display_step)
-    print('Generating scores for all features...')
-    for log_pair in log_pairs:
-        log = log_pair[0]
-        feature = log_pair[1]
-        encode_decode, score = sess.run([y_pred, cost], feed_dict={X: [feature]})
-        data = {
-            'log': log,
-            'feature': feature,
-            'encode_decode': [ float(e) for e in encode_decode[0] ],
-            'score': float(score)
-        }
-        score_list.append(data)
+    num_training = int(len(trainingData) * 0.9)
+    validationData = trainingData[num_training:]
+    trainingData = trainingData[:num_training]
     
-    sorted_list = sorted(score_list, key=itemgetter('score'), reverse=True)
-    return sorted_list
+    print('training  :', len(trainingData))
+    print('validation:', len(validationData))
+    with tf.Session() as session:
+        init = tf.initialize_all_variables()
+        session.run(init)
+        session = optimization( session, trainingData, validationData )
+        checkpointFile = 'autoencoder.ckpt' 
+        saver = tf.train.Saver()
+        saver.save(session, checkpointFile)
+    return checkpointFile 
 
-
-def load_training_data_from_file():
-    log_pairs = []
-    path = 'data/SMTP_without_first7Days/'
-    for filename in os.listdir(path):
-        print('Loading', filename, '...')
-        log_pairs.extend(pickle.load(open(path + filename, 'rb')))
-
-    return log_pairs
+def predict( checkpointFile, featureVector):
+    score = 0.0
+    with tf.Session() as session:
+        saver = tf.train.Saver()
+        saver.restore(session, checkpointFile)
+        encode_decode, score = session.run([y_pred, cost], feed_dict={X: [featureVector]})
+        print('            cost =', '{:.9f}'.format(score))
+        print('featureVector:',featureVector)
+        print('encode_decode:',encode_decode)
+    return score
 
 
 if __name__ == '__main__':
-    log_pairs = pickle.load(open('data/SMTP_without_first7Days/all-20160608-geo.log.SMTP.feature', 'rb'))
-    score_list = autoencoder(log_pairs)
+    with open('data/normalData.p','rb') as f:
+        trainingData = [featureVector for idStr, featureVector in cPickle.load(f)]
+        checkpointFile = train(trainingData[:20000])
+        
+        featureVector = [0.0 for x in range(24)]
+        score = predict( checkpointFile, featureVector)
