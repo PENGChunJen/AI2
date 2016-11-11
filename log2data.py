@@ -1,4 +1,5 @@
 import cPickle
+from datetime import datetime, timedelta
 from elasticsearch import Elasticsearch
 # Define a defualt Elasticsearch client
 indexName = 'ai2_v2.0'
@@ -45,7 +46,33 @@ def update( Dict, key, value ):
     else:
         Dict[key] = [value]
 
-#TODO
+def computeTimesFeatures(userData, log):
+    presentTimePoint = log['timestamp']
+    day1TimePoint = presentTimePoint- timedelta(days=1)
+    day3TimePoint = presentTimePoint- timedelta(days=3)
+    day7TimePoint = presentTimePoint- timedelta(days=7)
+    day1Count, day3Count, day7Count = 0, 0, 0
+
+    for dayKey in userData['timestamps'].keys():
+        day = datetime.strptime(dayKey, "%Y-%m-%d")
+        dayTime = presentTimePoint.replace(year=day.year, month=day.month, day=day.day)
+
+        if dayTime > day7TimePoint:
+            day7Count += 1
+            for pastLog in userData['timestamps'][dayKey]:
+                time = pastLog['timestamp']
+                if time > day3TimePoint:
+                    day3Count += 1
+                    if time > day1TimePoint:
+                        day1Count += 1
+
+    delta = 0.000001
+    past1dayMean = day1Count
+    past3daysMean = day3Count / 3.0
+    past7daysMean = day7Count / 7.0
+
+    return ((past1dayMean - past3daysMean) / (past3daysMean + delta)), ((past1dayMean - past7daysMean) / (past7daysMean + delta)), ((past3daysMean - past7daysMean) / (past7daysMean + delta))
+
 def generateData(log, userData):
     featureVector = [0.0 for x in xrange(24)]
     data = {
@@ -54,6 +81,13 @@ def generateData(log, userData):
         'scores':{},
         'label':log['label']
     }
+
+    featureVector[:3] = computeTimesFeatures(userData, log)
+    featureVector[3] = False if log['device'] in userData['devices'] else True
+    featureVector[4] = False if log['IP'] in userData['IPs'] else True
+    featureVector[5] = False if log['city'] in userData['cities'] else True
+    featureVector[6] = False if log['county'] in userData['counties'] else True
+    featureVector[7] = False if log['nation'] in userData['nations'] else True
      
     update(userData['services'], log['service'], log['timestamp'])
     update(userData['IPs'], log['IP'], log['timestamp'])
