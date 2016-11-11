@@ -75,7 +75,7 @@ def optimization(sess, train, validation):
     print('Validation  cost =', '{:.9f}\n'.format(test_cost/len(validation)))
     return sess
 
-def train(trainingData):
+def train(trainingData,checkpointFile):
     print('\nBuilding Autoencoder...')
     num_training = int(len(trainingData) * 0.9)
     validationData = trainingData[num_training:]
@@ -87,7 +87,6 @@ def train(trainingData):
         init = tf.initialize_all_variables()
         session.run(init)
         session = optimization( session, trainingData, validationData )
-        checkpointFile = 'autoencoder.ckpt' 
         saver = tf.train.Saver()
         saver.save(session, checkpointFile)
     return checkpointFile 
@@ -98,16 +97,17 @@ def predict( checkpointFile, featureVector):
         saver = tf.train.Saver()
         saver.restore(session, checkpointFile)
         encode_decode, score = session.run([y_pred, cost], feed_dict={X: [featureVector]})
-        print('            cost =', '{:.9f}'.format(score))
-        print('featureVector:',featureVector)
-        print('encode_decode:',encode_decode)
-    return score
+    return score, encode_decode
 
 
 if __name__ == '__main__':
     with open('data/normalData.p','rb') as f:
         trainingData = [featureVector for idStr, featureVector in cPickle.load(f)]
-        checkpointFile = train(trainingData[:20000])
-        
+        checkpointFile = 'data/autoencoder.ckpt' 
+        random.shuffle(trainingData)
+        checkpointFile = train(trainingData[:20000],checkpointFile)
         featureVector = [0.0 for x in range(24)]
-        score = predict( checkpointFile, featureVector)
+        score, encode_decode = predict( checkpointFile, featureVector)
+        print('            cost =', '{:.9f}'.format(score))
+        print('featureVector:',featureVector)
+        print('encode_decode:',encode_decode)
