@@ -2,7 +2,7 @@ import json, random
 import autoencoder
 from elasticsearch import Elasticsearch
 import cPickle
-
+import numpy as np
 indexName = 'ai2_v2.0'
 
 def renewTrainingData(fileName):
@@ -56,11 +56,24 @@ def loadModel(modelName):
 def generateScore(data):
     #checkpointFile = loadModel('autoencoder') #should be global?
     #checkpointFile = 'data/autoencoder.ckpt' 
-    #score, encode_decode = autoencoder.predict( checkpointFile, data['featureVector'])
+    #score, encode_decode = autoencoder.predict( checkpointFile, [data['featureVector']])
     score = 0.0
     data['scores']['autoencoder'] = score
     return data
 
+def generateScoreList(dataList):
+    score = 0.0
+    #checkpointFile = loadModel('autoencoder') #should be global?
+    featureVectors = [ data['featureVector'] for data in dataList ]
+    checkpointFile = 'data/autoencoder.ckpt' 
+    encode_decode, score = autoencoder.predict( checkpointFile, featureVectors)
+    loss = np.sum(np.power(featureVectors - encode_decode, 2), axis=1)
+    for i in xrange(len(featureVectors)):
+        #print('         loss:', '{:.9f}'.format(loss[i]))
+        #print('featureVector:',featureVectors[i])
+        #print('encode_decode:',encode_decode[i])
+        dataList[i]['scores']['autoencoder'] = loss[i]
+    return dataList
 
 if __name__ == '__main__':
     

@@ -8,7 +8,7 @@ from sys import stdout
 
 from file2log import generateLogs 
 from log2data import getUserData, generateData, generateDataFromJob 
-from data2score import generateScore
+from data2score import generateScore, generateScoreList
 
 from elasticsearch import Elasticsearch, helpers
 
@@ -172,7 +172,8 @@ def generateJobs(logs):
 
 def doJob(userDataTuple):
     userData, dataList = generateDataFromJob(userDataTuple) 
-    dataList = [generateScore(data) for data in dataList]
+    #dataList = [generateScore(data) for data in dataList]
+    #dataList = generateScoreList(dataList)
     return userData, dataList
 
 def runParallel():
@@ -209,7 +210,8 @@ def runParallel():
         for userData, dataList in results.get():
             userDataList.append(userData)
             allDataList.extend(dataList)
-        
+       
+        allDataList = generateScoreList(allDataList)
         bulkIndex( logs, userDataList, allDataList )
 
 

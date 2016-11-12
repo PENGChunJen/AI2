@@ -91,23 +91,30 @@ def train(trainingData,checkpointFile):
         saver.save(session, checkpointFile)
     return checkpointFile 
 
-def predict( checkpointFile, featureVector):
+def predict( checkpointFile, featureVectorList):
     score = 0.0
     with tf.Session() as session:
         saver = tf.train.Saver()
         saver.restore(session, checkpointFile)
-        encode_decode, score = session.run([y_pred, cost], feed_dict={X: [featureVector]})
-    return score, encode_decode
+        encode_decode, score = session.run([y_pred, cost], feed_dict={X: featureVectorList})
+    return encode_decode, score
 
 
 if __name__ == '__main__':
-    with open('data/normalData.p','rb') as f:
-        trainingData = [featureVector for idStr, featureVector in cPickle.load(f)]
-        checkpointFile = 'data/autoencoder.ckpt' 
-        random.shuffle(trainingData)
-        checkpointFile = train(trainingData[:20000],checkpointFile)
-        featureVector = [0.0 for x in range(24)]
-        score, encode_decode = predict( checkpointFile, featureVector)
-        print('            cost =', '{:.9f}'.format(score))
-        print('featureVector:',featureVector)
-        print('encode_decode:',encode_decode)
+    checkpointFile = 'data/autoencoder.ckpt' 
+    TRAIN = False
+    if TRAIN:
+        with open('data/normalData.p','rb') as f:
+            trainingData = [featureVector for idStr, featureVector in cPickle.load(f)]
+            random.shuffle(trainingData)
+            checkpointFile = train(trainingData[:20000],checkpointFile)
+    featureVector = [0.0 for x in range(24)]
+    #score, encode_decode = predict( checkpointFile, [featureVector])
+    featureVectors = [[y/100.0 for x in range(24)] for y in range(10)]
+    encode_decode, score = predict( checkpointFile, featureVectors)
+    loss = np.sum(np.power(featureVectors - encode_decode, 2), axis=1)
+    for i in xrange(len(featureVectors)):
+        print('            cost =', '{:.9f}'.format(loss[i]))
+        print('featureVector:',featureVectors[i])
+        print('encode_decode:',encode_decode[i])
+
