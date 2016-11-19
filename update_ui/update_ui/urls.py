@@ -16,7 +16,7 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.conf.urls import url
-from outlier.views import hello_world
+from data.views import hello_world
 from django.contrib import admin
 
 urlpatterns = [
