@@ -35,7 +35,6 @@ def getUserData(user):
     if not res['found']:
         userData = generateUserData(user)
     else:
-        #userData = res['_source']
         userData = cPickle.loads(str(res['_source']['blob']))
         
     return userData
