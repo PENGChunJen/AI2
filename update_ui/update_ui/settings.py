@@ -26,6 +26,12 @@ DEBUG = True
 
 ALLOWED_HOSTS = [ '*' ]
 
+ELASTICSEARCH_CONFIG = {
+    "indexName": "ai2_v2.0",
+    "hosts": [ '192.168.1.1:9200', '192.168.1.2:9200', '192.168.1.3:9200', '192.168.1.4:9200', '192.168.1.5:9200', '192.168.1.6:9200', '192.168.1.10:9200' ],
+    "maxThread": 500000,
+}
+
 
 # Application definition
 
@@ -119,4 +125,3 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.10/howto/static-files/
 STATIC_ROOT = BASE_DIR + "/static"
 STATIC_URL = 'static/'
-print STATIC_ROOT
