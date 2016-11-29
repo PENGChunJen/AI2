@@ -217,6 +217,7 @@ def runParallel():
 
 if __name__ == '__main__':
     # Define a defualt Elasticsearch client
+    '''
     hosts = ['192.168.1.1:9200',
              '192.168.1.2:9200',
              '192.168.1.3:9200',
@@ -224,6 +225,8 @@ if __name__ == '__main__':
              '192.168.1.5:9200',
              '192.168.1.6:9200',
              '192.168.1.10:9200']
+    '''
+    hosts = ['localhost:9200']
     maxThread = 500000
     
     es = Elasticsearch(hosts=hosts)
