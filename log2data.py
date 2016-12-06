@@ -24,7 +24,9 @@ def generateUserData(user):
         'cities':{},
         'counties':{},
         'nations':{},
-        'timestamps':{}
+        'timestamps':{},
+        'attackTimestamp': None
+        'stableTraingTimestamp': None
     }
     return userData
 

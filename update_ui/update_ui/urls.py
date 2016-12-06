@@ -16,14 +16,15 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.conf.urls import url
-from data.views import outliers
+from data.views import outliers, labelData
 from userData.views import userDataDetail
 from django.contrib import admin
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^outliers/$', outliers),
-    url(r'^userData/(?P<userId>.+?)/', userDataDetail)
+    url(r'^outliers/', outliers),
+    url(r'^userData/(?P<userId>.+?)/', userDataDetail),
+    url(r'^labelData/', labelData)
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

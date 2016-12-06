@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NTU AI2 Analysist Dashboard</title>
+    <link rel="stylesheet" type="text/css" href="./lib/semantic/dist/semantic.min.css" />
+    <link rel="stylesheet" type="text/css" href="./lib/node_modules/angularjs-datepicker/dist/angular-datepicker.min.css"/>
+    <style type="text/css">
+    tbody > tr:hover {
+        background-color: lightblue;
+    }
+    
+    .tabular > .item {
+        cursor: pointer;
+    }
+    
+    td > a {
+        cursor: pointer;
+    }
+
+    #userModal > .content {
+        height: 70vh;
+        overflow-y:scroll;
+    }
+
+    tr.abnormal {
+        background-color: rgb(246, 156, 85);
+    }
+
+    tr.normal {
+        background-color: rgb(145, 239, 144);
+    }
+    </style>
+</head>
+
+<body ng-app="Dashboard" ng-controller="dashboardCtrl" ng-init="initDashboard()">
+    <div class="ui dimmer">
+        <div class="ui large loader"></div>
+    </div>
+    <br />
+    <div class="ui right aligned grid">
+        <div class="sixteen wide column">
+            <button class="basic ui button" ng-click="submitReport()">Submit</button>
+        </div>
+    </div>
+    <table class="ui celled table">
+        <thead>
+            <tr>
+                <th>No.</th>
+                <th></th>
+                <th></th>
+                <th>Score</th>
+                <th>Service</th>
+                <th>User</th>
+                <th>From IP</th>
+                <th>Nation</th>
+                <th>County</th>
+                <th>Device</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="outlier in outliers" ng-class="{'abnormal': outlier.label=='abnormal', 'normal': outlier.label=='normal'}">
+                <td>{{$index + 1}}</td>
+                <td>
+                    <input type="radio" ng-model="outlier.label" value="normal"> normal<br />
+                    <input type="radio" ng-model="outlier.label" value="abnormal"> abnormal
+                </td>
+                <td>
+                    <button class="ui basic button" ng-click="clearLabel(outlier)">clear</button>
+                </td>
+                <td>{{outlier._source.scores.autoencoder | number : fractionSize}}</td>
+                <td>{{outlier._source.log.service}}</td>
+                <td><a ng-click="showUserDetail(outlier)">{{outlier._source.log.user}}</a></td>
+                <td>{{outlier._source.log.IP | displayIP}}</td>
+                <td>{{outlier._source.log.county}}</td>
+                <td>{{outlier._source.log.city}}</td>
+                <td>{{outlier._source.log.device}}</td>
+                <td>{{outlier._source.log.timestamp}}</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="ui modal" id="userModal">
+        <div class="header">
+            {{currentUserData.id}}
+        </div>
+        <div class="content">
+            <div class="ui right aligned grid">
+                <div class="sixteen wide column">
+                    <div class="ui buttons">
+                        <button class="ui labeled icon button" ng-click="getPreviousMonthData()">
+                            <i class="left chevron icon"></i>
+                            {{currentUserData.startDate | onlyDate}}
+                        </button>
+                        <button class="ui right labeled icon button">
+                            {{currentUserData.endDate | onlyDate}}
+                            <i class="right chevron icon"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <table class="ui celled table">
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Service</th>
+                        <th>From IP</th>
+                        <th>Nation</th>
+                        <th>County</th>
+                        <th>Device</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="log in currentUserData.data">
+                        <td>{{$index + 1}}</td>
+                        <td>{{log.service}}</td>
+                        <td>{{log.IP | displayIP}}</td>
+                        <td>{{log.nation}}</td>
+                        <td>{{log.county}}</td>
+                        <td>{{log.device}}</td>
+                        <td>{{log.timestamp}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="actions">
+            <div class="ui black deny button" ng-click="closeUserModal()">Close</div>
+        </div>
+    </div>
+    <!-- JS -->
+    <script type="text/javascript" src="./lib/jquery-3.1.1.min.js"></script>
+    <script type="text/javascript" src="./lib/semantic/dist/semantic.min.js"></script>
+    <script type="text/javascript" src="./lib/node_modules/moment/min/moment.min.js"></script>
+    <script type="text/javascript" src="./lib/node_modules/angular/angular.min.js"></script>
+    <script type="text/javascript" src="./lib/node_modules/angularjs-datepicker/dist/angular-datepicker.min.js"></script>
+    <script type="text/javascript" src="./app/app.js"></script>
+    <script type="text/javascript" src="./app/config.js"></script>
+</body>
+
+</html>

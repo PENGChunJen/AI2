@@ -28,7 +28,8 @@ ALLOWED_HOSTS = [ '*' ]
 
 ELASTICSEARCH_CONFIG = {
     "indexName": "ai2_v2.0",
-    "hosts": [ '192.168.1.1:9200', '192.168.1.2:9200', '192.168.1.3:9200', '192.168.1.4:9200', '192.168.1.5:9200', '192.168.1.6:9200', '192.168.1.10:9200' ],
+    #"hosts": [ '192.168.1.1:9200', '192.168.1.2:9200', '192.168.1.3:9200', '192.168.1.4:9200', '192.168.1.5:9200', '192.168.1.6:9200', '192.168.1.10:9200' ],
+    "hosts": [ 'localhost:9200' ],
     "maxThread": 500000,
 }
 
@@ -50,7 +51,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    #'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
