@@ -50,23 +50,25 @@ def update( Dict, key, value ):
 
 def computeTimesFeatures(userData, log):
     presentTimePoint = log['timestamp']
-    day1TimePoint = presentTimePoint- timedelta(days=1)
-    day3TimePoint = presentTimePoint- timedelta(days=3)
-    day7TimePoint = presentTimePoint- timedelta(days=7)
+    day1TimePoint = presentTimePoint - timedelta(days=1)
+    day3TimePoint = presentTimePoint - timedelta(days=3)
+    day7TimePoint = presentTimePoint - timedelta(days=7)
+    day8TimePoint = presentTimePoint - timedelta(days=7)
     day1Count, day3Count, day7Count = 0, 0, 0
 
     for dayKey in userData['timestamps'].keys():
         day = datetime.strptime(dayKey, "%Y-%m-%d")
         dayTime = presentTimePoint.replace(year=day.year, month=day.month, day=day.day)
 
-        if dayTime > day7TimePoint:
-            day7Count += 1
+        if dayTime > day8TimePoint:
             for pastLog in userData['timestamps'][dayKey]:
                 time = pastLog['timestamp']
-                if time > day3TimePoint:
-                    day3Count += 1
-                    if time > day1TimePoint:
-                        day1Count += 1
+                if time > day7TimePoint:
+                    day7Count += 1
+                    if time > day3TimePoint:
+                        day3Count += 1
+                        if time > day1TimePoint:
+                            day1Count += 1
 
     delta = 0.000001
     past1dayMean = day1Count
