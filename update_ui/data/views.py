@@ -93,6 +93,7 @@ def labelData(request):
             es.update(index=settings.ELASTICSEARCH_CONFIG['indexName'], doc_type='data', id=datum['_id'], body=dataUpdatePartialDoc)
             es.update(index=settings.ELASTICSEARCH_CONFIG['indexName'], doc_type='log', id=logIdStr, body=logUpdatePartialDoc)
         
+        userData['attackTimestamp'] = attackTimestamp
         es.index(index=settings.ELASTICSEARCH_CONFIG['indexName'], doc_type='userData', id=userId, body={ 'blob': cPickle.dumps(userData) })
 
     return JsonResponse({'status': 'OK'})
