@@ -19,6 +19,9 @@ startDate = date(2016,6,1)
 endDate = date(2016,6,1) 
 whiteList = ['140.112.*', '209,85,*']
 logPath = 'rawlog'
+hosts = ['localhost:9200']
+maxThread = 500000
+es = Elasticsearch(hosts=hosts)
 
 def dateGenerator(start, end):
     current = start
@@ -226,8 +229,6 @@ if __name__ == '__main__':
              '192.168.1.6:9200',
              '192.168.1.10:9200']
     '''
-    hosts = ['localhost:9200']
-    maxThread = 500000
     
     es = Elasticsearch(hosts=hosts)
     es.indices.create(index=indexName,ignore=[400])

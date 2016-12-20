@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 from elasticsearch import Elasticsearch
 from log2data import computeTimesFeatures
 from data2score import generateScore, generateScoreList
-from run.py import bulkIndex
+from run import bulkIndex
+from sys import stdout
 
 indexName = 'ai2_v2.0'
 hosts = ['localhost:9200']
@@ -102,7 +103,8 @@ if __name__ == '__main__':
             userDataList.append(userData)
             allDataList.extend(dataList)
 
-        allDataList = generateScoreList(allDataList)
-        bulkIndex(userDataList, allDataList)
+        if allDataList:
+            allDataList = generateScoreList(allDataList)
+        bulkIndex([], userDataList, allDataList)
 
         userRecords = getUserRecords()
