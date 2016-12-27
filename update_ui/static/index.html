@@ -88,16 +88,27 @@
         <div class="content">
             <div class="ui right aligned grid">
                 <div class="sixteen wide column">
-                    <div class="ui buttons">
-                        <button class="ui labeled icon button" ng-click="getPreviousMonthData()">
-                            <i class="left chevron icon"></i>
-                            {{currentUserData.startDate | onlyDate}}
-                        </button>
-                        <button class="ui right labeled icon button">
-                            {{currentUserData.endDate | onlyDate}}
-                            <i class="right chevron icon"></i>
-                        </button>
-                    </div>
+                    <form class="ui form">
+                        <div class="two fields">
+                            <div class="field">
+                                <label>Service</label>
+                                <input type="text" placeholder="target service" ng-model="userLogSearch.service">
+                            </div>
+                            <div class="field">
+                                <label>Time Interval</label>
+                                <div class="ui buttons">
+                                    <button class="ui labeled icon button" ng-click="getPreviousMonthData()">
+                                        <i class="left chevron icon"></i>
+                                        {{currentUserData.startDate | onlyDate}}
+                                    </button>
+                                    <button class="ui right labeled icon button">
+                                        {{currentUserData.endDate | onlyDate}}
+                                        <i class="right chevron icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
             <table class="ui celled table">
@@ -113,7 +124,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-repeat="log in currentUserData.data">
+                    <tr ng-repeat="log in currentUserData.data | filter:userLogSearch | orderBy:'timestamp':true">
                         <td>{{$index + 1}}</td>
                         <td>{{log.service}}</td>
                         <td>{{log.IP | displayIP}}</td>

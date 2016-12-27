@@ -13,7 +13,7 @@ def outliers(request):
     from_num = int(request.GET['from'])
     queryDSL = {
         "from": from_num,
-        "size": 10,
+        "size": 30,
         "query": {
             "bool": {
                 "filter": {

@@ -8,7 +8,7 @@ angular.module("Dashboard", [ 'Config', '720kb.datepicker' ])
                 $('body').dimmer({ 'closable': false });
                 $scope.outliers = [];
                 $(window).scroll(function() {
-                    if($(window).scrollTop() + $(window).height() == $(document).height()) {
+                    if($(window).scrollTop() + $(window).height() >= $(document).height()) {
                         if(!$scope.isLoading) {
                             $scope.getOutliers(($scope.pageNum) * 10);
                         }
@@ -51,16 +51,22 @@ angular.module("Dashboard", [ 'Config', '720kb.datepicker' ])
     	}
 
     	$scope.getUserData = function(userId, startDate, endDate) {
+            $scope.isLoading = true;
     		$http.get(API_BASE + "userData/" + userId + "/?startDate=" + startDate + "&endDate=" + endDate)
     			.success(function(data) {
     				$scope.currentUserData.data = $scope.currentUserData.data.concat(data.reverse());
+                    $scope.isLoading = false;
     			})
     			.error(function() {
     				alert("error when retrieve userData");
+                    $scope.isLoading = false;
     			})
     	}
 
     	$scope.getPreviousMonthData = function() {
+            if($scope.isLoading) {
+               return;
+            }
     		var date = $scope.currentUserData.startDate;
     		var startDate = moment(date).subtract(1, 'months').format('YYYY-MM-DD');
     		var endDate = moment(date).subtract(1, 'days').format('YYYY-MM-DD');
