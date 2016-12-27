@@ -12,9 +12,7 @@ indexName = 'ai2_v2.0'
 hosts = ['localhost:9200']
 maxThread = 100
 
-userRecordsFrom = 0
-totalUserRecords = 1 
-recordsPerQuery = 5000
+recordsPerQuery = 1000
 
 updateTime = datetime.now()
 
@@ -27,18 +25,6 @@ def genUserQueryDSL(fromNum):
         }
     }
     return queryDSL
-
-def getUserRecords():
-    global userRecordsFrom, totalUserRecords
-    if userRecordsFrom <= totalUserRecords:
-        print "retrieving userData from %d to %d" % (userRecordsFrom, userRecordsFrom + recordsPerQuery)
-        es = Elasticsearch(hosts=hosts)
-        res = es.search(index=indexName, doc_type="userData", body=genUserQueryDSL(userRecordsFrom))
-        totalUserRecords = res['hits']['total']
-        userRecordsFrom += recordsPerQuery
-        return res['hits']['hits']
-    else:
-        return None
 
 def correctData(userData, attackTimestamp):
     dataList = []
@@ -76,35 +62,48 @@ def updateUserDataAndData(userRecord):
 
     return userData, dataList
 
+def parallelUpdate(userRecords):
+    poolSize = multiprocessing.cpu_count()
+    pool = multiprocessing.Pool(processes = poolSize)
+    results = pool.map_async(updateUserDataAndData, userRecords, chunksize=1)
+    start_time = time.time()
+    jobNum = len(userRecords)
+    while (True):
+        if(results.ready()): break
+        stdout.write('Used %.2f seconds, %5d/%d jobs left ... %10s \r'
+            % (time.time()-start_time, results._number_left, jobNum, ''))
+        stdout.flush()
+        time.sleep(0.5)
+    elapsed_time = time.time()-start_time
+    stdout.write('Used %.2f seconds, Processed %5d users, Avg: %.2f logs/sec %50s \n'
+        %(elapsed_time, jobNum, jobNum/float(elapsed_time), ''))
+
+    pool.close()
+    pool.join()
+
+    userDataList = []
+    allDataList = []
+    for userData, dataList in results.get():
+        userDataList.append(userData)
+        allDataList.extend(dataList)
+
+    if allDataList:
+        allDataList = generateScoreList(allDataList)
+    bulkIndex([], userDataList, allDataList)
+
 if __name__ == '__main__':
-    userRecords = getUserRecords()
-    while userRecords:
-        poolSize = multiprocessing.cpu_count()
-        pool = multiprocessing.Pool(processes = poolSize)
-        results = pool.map_async(updateUserDataAndData, userRecords, chunksize=1)
-        start_time = time.time()
-        jobNum = len(userRecords)
-        while (True):
-            if(results.ready()): break
-            stdout.write('Used %.2f seconds, %5d/%d jobs left ... %10s \r'
-                % (time.time()-start_time, results._number_left, jobNum, ''))
-            stdout.flush()
-            time.sleep(0.5)
-        elapsed_time = time.time()-start_time
-        stdout.write('Used %.2f seconds, Processed %5d users, Avg: %.2f logs/sec %50s \n'
-            %(elapsed_time, jobNum, jobNum/float(elapsed_time), ''))
+    print "retrieving userData..."
+    es = Elasticsearch(hosts=hosts)
+    res = es.search(index=indexName, doc_type="userData", body=genUserQueryDSL(0), scroll="1m")
+    scroll_id = res['_scroll_id']
+    userRecords = res['hits']['hits']
+    totalRecords = res['hits']['total']
+    currentUserRecords = recordsPerQuery if recordsPerQuery < totalRecords else totalRecords
+    parallelUpdate(userRecords)
+    while userRecords and currentUserRecords < totalRecords:
+        print "retrieving userData %d/%d" % (currentUserRecords, totalRecords)
+        res = es.scroll(scroll_id=scroll_id, scroll="1m")
+        userRecords = res['hits']['hits']
+        currentUserRecords += recordsPerQuery
 
-        pool.close()
-        pool.join()
-
-        userDataList = []
-        allDataList = []
-        for userData, dataList in results.get():
-            userDataList.append(userData)
-            allDataList.extend(dataList)
-
-        if allDataList:
-            allDataList = generateScoreList(allDataList)
-        bulkIndex([], userDataList, allDataList)
-
-        userRecords = getUserRecords()
+        parallelUpdate(userRecords)
