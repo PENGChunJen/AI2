@@ -1,19 +1,8 @@
-import cPickle
+import cPickle, json, fnmatch
+
+import config
 from datetime import datetime, timedelta
 from elasticsearch import Elasticsearch
-# Define a defualt Elasticsearch client
-indexName = 'ai2_v2.0'
-'''
-hosts = ['192.168.1.1:9200',
-         '192.168.1.2:9200',
-         '192.168.1.3:9200',
-         '192.168.1.4:9200',
-         '192.168.1.5:9200',
-         '192.168.1.6:9200',
-         '192.168.1.10:9200']
-'''
-hosts = ['localhost:9200']
-maxThread = 100
 
 def generateUserData(user):
     userData = {
@@ -31,8 +20,8 @@ def generateUserData(user):
     return userData
 
 def getUserData(user):
-    es = Elasticsearch(hosts=hosts, maxsize=maxThread)
-    res = es.get( index = indexName, 
+    es = Elasticsearch(hosts=config.hosts, maxsize=config.maxThread)
+    res = es.get( index = config.indexName, 
                   doc_type = 'userData',
                   id = user,
                   ignore = [404]
@@ -102,6 +91,13 @@ def generateData(log, userData):
     update(userData['counties'], log['county'], log['timestamp'])
     update(userData['nations'], log['nation'], log['timestamp'])
     update(userData['timestamps'], log['timestamp'].date().isoformat(), log)
+
+
+    #check if IP is in whiteList
+    for IP in config.whiteList:
+        if fnmatch.fnmatch(log['IP'], IP):
+            data['label'] = 'normal'
+            break
 
     return userData, data
 

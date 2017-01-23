@@ -3,14 +3,13 @@ import time
 import multiprocessing
 from datetime import datetime, timedelta
 from elasticsearch import Elasticsearch
+from sys import stdout
+
+import config
 from log2data import computeTimesFeatures
 from data2score import generateScore, generateScoreList
 from run import bulkIndex
-from sys import stdout
 
-indexName = 'ai2_v2.0'
-hosts = ['localhost:9200']
-maxThread = 100
 
 recordsPerQuery = 1000
 
@@ -93,8 +92,8 @@ def parallelUpdate(userRecords):
 
 if __name__ == '__main__':
     print "retrieving userData..."
-    es = Elasticsearch(hosts=hosts)
-    res = es.search(index=indexName, doc_type="userData", body=genUserQueryDSL(0), scroll="1m")
+    es = Elasticsearch(hosts=config.hosts)
+    res = es.search(index=config.indexName, doc_type="userData", body=genUserQueryDSL(0), scroll="1m")
     scroll_id = res['_scroll_id']
     userRecords = res['hits']['hits']
     totalRecords = res['hits']['total']

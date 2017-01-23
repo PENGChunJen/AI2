@@ -3,11 +3,12 @@ import autoencoder
 from elasticsearch import Elasticsearch
 import cPickle
 import numpy as np
-indexName = 'ai2_v2.0'
+
+import config
 
 def renewTrainingData(fileName):
-    es = Elasticsearch(hosts=hosts)
-    res = es.get(index='ai2', doc_type='data', id='trainingData', ignore=[400,404])
+    es = Elasticsearch(hosts=config.hosts)
+    res = es.get(index=config.indexName, doc_type='data', id='trainingData', ignore=[400,404])
     if res['found']:
         normalData = json.loads(res['_source']['normalData'])
         
@@ -39,8 +40,8 @@ def loadTrainingData(fileName, num):
     return trainingData
 
 def loadModel(modelName):
-    es = Elasticsearch(hosts=hosts)
-    res = es.get(index=indexName, doc_type='model', id=modelName, ignore=[400,404])
+    es = Elasticsearch(hosts=config.hosts)
+    res = es.get(index=config.indexName, doc_type='model', id=modelName, ignore=[400,404])
     if res['found']:
         model = cPickle.loads(res['_source']) 
     else:
@@ -49,7 +50,7 @@ def loadModel(modelName):
         trainingData = loadTrainingData('normalData.p',trainingDataNum)
         model = autoencoder.train(trainingData)
         print 'model:',model
-        res = es.index(index=indexName, doc_type='model', id=modelName, body=cPickle.dumps(model))
+        res = es.index(index=config.indexName, doc_type='model', id=modelName, body=cPickle.dumps(model))
     return model
 
 
@@ -77,15 +78,6 @@ def generateScoreList(dataList):
 
 if __name__ == '__main__':
     
-    # Define a defualt Elasticsearch client
-    hosts = ['192.168.1.1:9200',
-             '192.168.1.2:9200',
-             '192.168.1.3:9200',
-             '192.168.1.4:9200',
-             '192.168.1.5:9200',
-             '192.168.1.6:9200',
-             '192.168.1.10:9200']
-    maxThread = 500000
     #renewTrainingData('data/normalData.p')
     featureVector = [0.0 for x in xrange(24)]
     testingData = {

@@ -6,22 +6,13 @@ from datetime import date, timedelta
 from collections import deque
 from sys import stdout
 
+import config  
 from file2log import generateLogs 
 from log2data import getUserData, generateData, generateDataFromJob 
 from data2score import generateScore, generateScoreList
 
 from elasticsearch import Elasticsearch, helpers
 
-# Global vairables
-indexName = 'ai2_v2.0'
-#indexName = 'ai2_test'
-startDate = date(2016,6,1) 
-endDate = date(2016,6,1) 
-whiteList = ['140.112.*', '209,85,*']
-logPath = 'rawlog'
-hosts = ['localhost:9200']
-maxThread = 500000
-es = Elasticsearch(hosts=hosts)
 
 def dateGenerator(start, end):
     current = start
@@ -32,7 +23,7 @@ def dateGenerator(start, end):
 def generateFileNameList(startDate, endDate):
     filename_list = []
     for d in dateGenerator(startDate, endDate):
-        filename = '%s/all-%s-geo.log'%(logPath,d.strftime('%Y%m%d'))
+        filename = '%s/all-%s-geo.log'%(config.logPath,d.strftime('%Y%m%d'))
         filename_list.append(filename)
     return filename_list 
 
@@ -43,7 +34,7 @@ def generateBulkActions( logList, userDataList, dataList ):
     for userData in userDataList:
         action = {
             '_op_type': 'index',
-            '_index'  : indexName,
+            '_index'  : config.indexName,
             '_type'   : 'userData',
             '_id'     : userData['user'], 
             '_source' : { 'blob': cPickle.dumps(userData)},
@@ -54,7 +45,7 @@ def generateBulkActions( logList, userDataList, dataList ):
                             log['user'],log['service'])
         action = {
             '_op_type': 'index',
-            '_index'  : indexName,
+            '_index'  : config.indexName,
             '_type'   : 'log',
             '_id'     : idStr, 
             '_source' : log
@@ -65,7 +56,7 @@ def generateBulkActions( logList, userDataList, dataList ):
                             data['log']['user'],data['log']['service'])
         action = {
             '_op_type': 'index',
-            '_index'  : indexName,
+            '_index'  : config.indexName,
             '_type'   : 'data',
             '_id'     : idStr, 
             '_source' : data 
@@ -88,7 +79,7 @@ def doBulk( chunkSize, actions, timeOut ):
     successNum, item = helpers.bulk(es,actions, refresh='false', request_timeout=timeOut)
     del actions[:len(actions)]
     
-    #deque(helpers.parallel_bulk(es,actions, thread_count=maxThread, chunk_size=1000, request_timeout=30))
+    #deque(helpers.parallel_bulk(es,actions, thread_count=config.maxThread, chunk_size=1000, request_timeout=30))
         
     elapsed_time = time.time()-start_time
     print('Used %.2f seconds, Processed %7d actions, Avg: %.2f actions/sec %50s'
@@ -101,9 +92,9 @@ def bulkIndex( logList, userDataList, dataList ):
     actions, userDataActions = generateBulkActions( logList, userDataList, dataList )
 
 
-    es = Elasticsearch(hosts=hosts, maxsize=maxThread)
+    es = Elasticsearch(hosts=config.hosts, maxsize=config.maxThread)
     setting = {"index":{"refresh_interval":"-1"}}
-    es.indices.put_settings(index=indexName, body=setting)
+    es.indices.put_settings(index=config.indexName, body=setting)
 
     print('number of userData:%8d'%len(userDataList))
     doBulk( 500, userDataActions, 180 ) #TODO: Needed to be tuned accordingly
@@ -114,14 +105,14 @@ def bulkIndex( logList, userDataList, dataList ):
 
 
     setting = {"index":{"refresh_interval":"1s"}}
-    es.indices.put_settings(index=indexName, body=setting)
+    es.indices.put_settings(index=config.indexName, body=setting)
 
     time.sleep(2)
-    docNum = es.count(index=indexName)['count']
+    docNum = es.count(index=config.indexName)['count']
     print('Bulk indexing finished, doc_count:%d %40s\n' % (docNum, ''))
 
 def run():
-    fileNameList = generateFileNameList(startDate, endDate)
+    fileNameList = generateFileNameList(config.startDate, config.endDate)
     for fileName in fileNameList:
         print('\nLoading %s ... '%(fileName))
         logs = generateLogs(fileName) 
@@ -180,7 +171,7 @@ def doJob(userDataTuple):
     return userData, dataList
 
 def runParallel():
-    fileNameList = generateFileNameList(startDate, endDate)
+    fileNameList = generateFileNameList(config.startDate, config.endDate)
     for fileName in fileNameList:
         print('\nLoading %s ...'%(fileName))
         
@@ -219,20 +210,13 @@ def runParallel():
 
 
 if __name__ == '__main__':
-    # Define a defualt Elasticsearch client
-    '''
-    hosts = ['192.168.1.1:9200',
-             '192.168.1.2:9200',
-             '192.168.1.3:9200',
-             '192.168.1.4:9200',
-             '192.168.1.5:9200',
-             '192.168.1.6:9200',
-             '192.168.1.10:9200']
-    '''
-    
-    es = Elasticsearch(hosts=hosts)
-    es.indices.create(index=indexName,ignore=[400])
-    
+
+    # Create an index with indexName in module 'config.py' if it does not exist
+    es = Elasticsearch(hosts = config.hosts)
+    if not es.indices.exists(index=config.indexName):
+        print('Creating index "%s"...'%config.indexName)
+        es.indices.create(index=config.indexName)
+
     #run()
     runParallel()
 
