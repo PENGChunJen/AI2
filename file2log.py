@@ -1,18 +1,16 @@
-import csv, codecs, string, time
+import csv, codecs, string, time, fnmatch
 from sys import stdout
 from datetime import datetime
 from collections import defaultdict
 from operator import itemgetter
 
-#services = ['SMTP'] # 0.5%
-services = ['SMTP', 'VPN', 'Exchange'] # 2%
-#services = ['SMTP', 'VPN', 'Exchange', 'POP3'] # 20%
-#services = ['SMTP', 'VPN', 'Exchange', 'POP3', 'OWA'] # 100% Don't touch this unless certain
+import config
+
 table = string.maketrans('.', '_')
 
 def handleException( logList ):
     #Filter by services
-    if logList[0] not in services: 
+    if logList[0] not in config.services: 
         return True 
 
     #csv not haveing 10 columns
@@ -56,14 +54,22 @@ def getData(fileName):
             if handleException( row ): continue
             yield list(row)
 
+def inWhiteList(log):
+    for IP in config.whiteList:
+        if fnmatch.fnmatch(log['IP'], IP):
+            return True
+    return False
+
 def generateLogs(fileName):
-    print('\nGenerating logs of services: %s... '%(', '.join(services)))
+    print('\nGenerating logs of services: %s... '%(', '.join(config.services)))
     start_time = time.time()
     
     logs = []
     count = 0
     for logList in getData(fileName):
         log = generateLog(logList)
+        if inWhiteList(log):
+            log['label']['analyst'] = 'whiteList'
         logs.append(log)
         
         count += 1

@@ -10,7 +10,6 @@ from log2data import computeTimesFeatures
 from data2score import generateScore, generateScoreList
 from run import bulkIndex
 
-
 recordsPerQuery = 1000
 
 updateTime = datetime.now()

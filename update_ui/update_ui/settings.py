@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/1.10/ref/settings/
 """
 
 import os
+import sys
+
+config_relative_path = "../../"
+sys.path.append(config_relative_path)
+import config
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,10 +32,9 @@ DEBUG = True
 ALLOWED_HOSTS = [ '*' ]
 
 ELASTICSEARCH_CONFIG = {
-    "indexName": "ai2_v2.0",
-    #"hosts": [ '192.168.1.1:9200', '192.168.1.2:9200', '192.168.1.3:9200', '192.168.1.4:9200', '192.168.1.5:9200', '192.168.1.6:9200', '192.168.1.10:9200' ],
-    "hosts": [ 'localhost:9200' ],
-    "maxThread": 500000,
+    "indexName": config.indexName,
+    "hosts": config.hosts,
+    "maxThread": config.maxThread,
 }
 
 

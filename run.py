@@ -13,7 +13,6 @@ from data2score import generateScore, generateScoreList
 
 from elasticsearch import Elasticsearch, helpers
 
-
 def dateGenerator(start, end):
     current = start
     while current <= end:
@@ -27,19 +26,8 @@ def generateFileNameList(startDate, endDate):
         filename_list.append(filename)
     return filename_list 
 
-def generateBulkActions( logList, userDataList, dataList ):
+def generateBulkActions( logList, dataList ):
     actions = []
-    userDataActions = []
-    
-    for userData in userDataList:
-        action = {
-            '_op_type': 'index',
-            '_index'  : config.indexName,
-            '_type'   : 'userData',
-            '_id'     : userData['user'], 
-            '_source' : { 'blob': cPickle.dumps(userData)},
-        }
-        userDataActions.append(action)
     for log in logList:
         idStr = '%s_%s_%s'%(log['timestamp'].isoformat(),
                             log['user'],log['service'])
@@ -63,7 +51,7 @@ def generateBulkActions( logList, userDataList, dataList ):
         }
         actions.append(action)
     
-    return actions, userDataActions 
+    return actions
 
 def doBulk( chunkSize, actions, timeOut ):
     actionNum = len(actions)
@@ -85,19 +73,16 @@ def doBulk( chunkSize, actions, timeOut ):
     print('Used %.2f seconds, Processed %7d actions, Avg: %.2f actions/sec %50s'
         %(elapsed_time, actionNum, actionNum/float(elapsed_time), ''))
 
-def bulkIndex( logList, userDataList, dataList ):
+def bulkIndex( logList, dataList ):
     print('\nBulk Indexing ...') 
 
 
-    actions, userDataActions = generateBulkActions( logList, userDataList, dataList )
+    actions = generateBulkActions( logList, dataList )
 
 
     es = Elasticsearch(hosts=config.hosts, maxsize=config.maxThread)
     setting = {"index":{"refresh_interval":"-1"}}
     es.indices.put_settings(index=config.indexName, body=setting)
-
-    print('number of userData:%8d'%len(userDataList))
-    doBulk( 500, userDataActions, 180 ) #TODO: Needed to be tuned accordingly
 
     print('number of logs    :%8d'%len(logList))
     print('number of data    :%8d'%len(dataList))
@@ -165,10 +150,10 @@ def generateJobs(logs):
     return usersLog 
 
 def doJob(userDataTuple):
-    userData, dataList = generateDataFromJob(userDataTuple) 
+    dataList = generateDataFromJob(userDataTuple) 
     #dataList = [generateScore(data) for data in dataList]
     #dataList = generateScoreList(dataList)
-    return userData, dataList
+    return dataList
 
 def runParallel():
     fileNameList = generateFileNameList(config.startDate, config.endDate)
@@ -199,15 +184,12 @@ def runParallel():
         pool.close()
         pool.join()       
        
-        userDataList = []
         allDataList = []
-        for userData, dataList in results.get():
-            userDataList.append(userData)
+        for dataList in results.get():
             allDataList.extend(dataList)
        
         allDataList = generateScoreList(allDataList)
-        bulkIndex( logs, userDataList, allDataList )
-
+        bulkIndex( logs, allDataList )
 
 if __name__ == '__main__':
 
