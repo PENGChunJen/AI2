@@ -4,3 +4,4 @@ data
 *.swp
 *.pyc
 cmd.log
+config.py
