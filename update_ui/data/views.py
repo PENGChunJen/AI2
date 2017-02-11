@@ -16,8 +16,8 @@ def outliers(request):
         "size": 30,
         "query": {
             "bool": {
-                "filter": {
-                    "missing": {
+                "must_not": {
+                    "term": {
                         "field": "label.analyst"
                     }
                 }
