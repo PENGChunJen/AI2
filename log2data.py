@@ -92,7 +92,7 @@ def generateTimeRange( log, start, end ):
     }
     return req_body
 
-def countTimesFeatures(log, es):
+def countTimesFeatures(log, es, sameBatchList):
     request = []
     head = { 'index':config.indexName, 'type':'log' }
 
@@ -108,6 +108,8 @@ def countTimesFeatures(log, es):
     past1daysCount = pastCounts[0]
     past3daysCount = pastCounts[1]
     past7daysCount = pastCounts[2]
+
+    past1daysCount += sameBatchList['service'].count( log['service'] )
 
     delta = 1e-6
     past1dayMean = past1daysCount
@@ -137,7 +139,7 @@ def generateRequestBody(user, field, match_string):
     }
     return body
 
-def checkExistenceFeatures(log, es):
+def checkExistenceFeatures(log, es, sameBatchList):
     checkFeatures = ['device', 'IP', 'city', 'county', 'nation']
     request = []
     head = { 'index':config.indexName, 'type':'log' }
@@ -148,11 +150,22 @@ def checkExistenceFeatures(log, es):
 
     responses = es.msearch(body=request)
     features = [ float(response["hits"]["total"] > 0) for response in responses["responses"] ]
+
+
+    for i in xrange(len(checkFeatures)):
+        feature = checkFeatures[i]
+        if log[feature] not in sameBatchList[feature]:
+            features[i] = 1.0
+
     return features
 
-def generateData(log):
+def generateData(log, sameBatchList):
     es = Elasticsearch(hosts=config.hosts, maxsize=config.maxThread)
     featureVector = [0.0 for x in xrange(24)]
+
+    featureVector[:3] = countTimesFeatures(log, es, sameBatchList)
+    featureVector[3:8] = checkExistenceFeatures(log, es, sameBatchList)
+
     data = {
         'log':log,
         'featureVector':featureVector,
@@ -160,18 +173,25 @@ def generateData(log):
         'label':log['label']
     }
 
-    featureVector[:3] = countTimesFeatures(log, es)
-    featureVector[3:8] = checkExistenceFeatures(log, es)
-
     return data
+
 
 def generateDataFromJob(userDataTuple):
     userId = userDataTuple[0]
     logList = userDataTuple[1]
     
+    sameBatchList = {} 
+    for k in logList[0]:
+        sameBatchList[k] = [] 
+
     dataList = []
     for log in logList:
-        data = generateData(log)
+        data = generateData(log, sameBatchList)
         dataList.append(data)
 
+        for k in log:
+            sameBatchList[k].append( log[k] )
+
     return dataList
+
+
