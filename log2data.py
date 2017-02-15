@@ -164,6 +164,7 @@ def generateData(log, sameBatchList):
     featureVector = [0.0 for x in xrange(24)]
 
     featureVector[:3] = countTimesFeatures(log, es, sameBatchList)
+    featureVector[1] = featureVector[0]
     featureVector[3:8] = checkExistenceFeatures(log, es, sameBatchList)
 
     data = {
