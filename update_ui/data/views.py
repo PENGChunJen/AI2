@@ -17,7 +17,7 @@ def outliers(request):
         "query": {
             "bool": {
                 "must_not": {
-                    "term": {
+                    "exists": {
                         "field": "label.analyst"
                     }
                 }
@@ -45,37 +45,10 @@ def labelData(request):
 
     for (userId, data) in users.items():
         es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
-        userBlob = es.get(index=settings.ELASTICSEARCH_CONFIG['indexName'], doc_type='userData', id=userId)
-        userData = cPickle.loads(str(userBlob['_source']['blob']))
         attackTimestamp = None
         for datum in data:
-            datumTimestamp = timestamp = datetime.strptime(datum['_source']['log']['timestamp'], '%Y-%m-%dT%H:%M:%S')
-            logs = userData['timestamps'][datumTimestamp.date().isoformat()]
-            for idx, log in enumerate(logs):
-                if datumTimestamp == log['timestamp']:
-                    if datum['label'] == 'normal':
-                        log['label']['analyst'] = datum['label']
-                    else:
-                        del logs[idx]
-                    break
+            datumTimestamp = datetime.strptime(datum['_source']['log']['timestamp'], '%Y-%m-%dT%H:%M:%S')
 
-            if datum['label'] != 'normal':
-                if attackTimestamp == None:
-                    attackTimestamp = datumTimestamp
-                else:
-                    attackTimestamp = datumTimestamp if datumTimestamp < attackTimestamp else attackTimestamp
-
-            for cacheKey in [ 'services', 'IPs', 'devices', 'counties', 'nations' ]:
-                should_deleted_keys = []
-                for key in userData[cacheKey]:
-                    if datumTimestamp in userData[cacheKey][key]:
-                        userData[cacheKey][key].remove(datumTimestamp)
-                    if len(userData[cacheKey][key]) == 0:
-                        should_deleted_keys.append(key)
-                for key in should_deleted_keys:
-                    del userData[cacheKey][key]
-
-            logIdStr = "%s_%s_%s" % (datumTimestamp.isoformat(), datum['_source']['log']['user'], datum['_source']['log']['service'])
             dataUpdatePartialDoc = {
                 'doc': {
                     'label': {
@@ -90,10 +63,17 @@ def labelData(request):
                     }
                 }
             }
+            logIdStr = "%s_%s_%s" % (datumTimestamp.isoformat(), datum['_source']['log']['user'], datum['_source']['log']['service'])
             es.update(index=settings.ELASTICSEARCH_CONFIG['indexName'], doc_type='data', id=datum['_id'], body=dataUpdatePartialDoc)
             es.update(index=settings.ELASTICSEARCH_CONFIG['indexName'], doc_type='log', id=logIdStr, body=logUpdatePartialDoc)
-        
-        userData['attackTimestamp'] = attackTimestamp
-        es.index(index=settings.ELASTICSEARCH_CONFIG['indexName'], doc_type='userData', id=userId, body={ 'blob': cPickle.dumps(userData) })
+
+            if datum['label'] != 'normal':
+                if attackTimestamp == None:
+                    attackTimestamp = datumTimestamp
+                else:
+                    attackTimestamp = datumTimestamp if datumTimestamp < attackTimestamp else attackTimestamp
+        if attackTimestamp != None:
+            update_point = { 'timestamp': attackTimestamp }
+            es.index(index=settings.ELASTICSEARCH_CONFIG['indexName'], doc_type='update_point', id=userId, body=update_point)
 
     return JsonResponse({'status': 'OK'})
