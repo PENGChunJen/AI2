@@ -92,11 +92,11 @@
                         <div class="three fields">
                             <div class="field">
                                 <label>Service</label>
-                                <input type="text" placeholder="target service" ng-model="userLogSearch.service">
+                                <input type="text" placeholder="target service" ng-model="userLogSearch._source.service">
                             </div>
                             <div class="field">
                                 <label>Nation</label>
-                                <input type="text" placeholder="target nation" ng-model="userLogSearch.nation">
+                                <input type="text" placeholder="target nation" ng-model="userLogSearch._source.nation">
                             </div>
                             <div class="field">
                                 <label>Time Interval</label>
@@ -130,12 +130,12 @@
                 <tbody>
                     <tr ng-repeat="log in currentUserData.data | filter:userLogSearch | orderBy:'timestamp':true">
                         <td>{{$index + 1}}</td>
-                        <td>{{log.service}}</td>
-                        <td>{{log.IP | displayIP}}</td>
-                        <td>{{log.nation}}</td>
-                        <td>{{log.county}}</td>
-                        <td>{{log.device}}</td>
-                        <td>{{log.timestamp}}</td>
+                        <td>{{log._source.service}}</td>
+                        <td>{{log._source.IP | displayIP}}</td>
+                        <td>{{log._source.nation}}</td>
+                        <td>{{log._source.county}}</td>
+                        <td>{{log._source.device}}</td>
+                        <td>{{log._source.timestamp}}</td>
                     </tr>
                 </tbody>
             </table>
