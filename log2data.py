@@ -1,73 +1,12 @@
 import cPickle, json
+import numpy as np
 
 import config
 from datetime import datetime, timedelta
 from elasticsearch import Elasticsearch
 
-def generateUserData(user):
-    userData = {
-        'user':user,
-        'services':{},
-        'IPs':{},
-        'devices':{},
-        'cities':{},
-        'counties':{},
-        'nations':{},
-        'timestamps':{},
-        'attackTimestamp': None,
-        'stableTraingTimestamp': None
-    }
-    return userData
-
-def getUserData(user):
-    es = Elasticsearch(hosts=config.hosts, maxsize=config.maxThread)
-    res = es.get( index = config.indexName, 
-                  doc_type = 'userData',
-                  id = user,
-                  ignore = [404]
-          )
-    if not res['found']:
-        userData = generateUserData(user)
-    else:
-        userData = cPickle.loads(str(res['_source']['blob']))
-        
-    return userData
-'''
-def update( Dict, key, value ):
-    if key in Dict:
-        Dict[key].append(value)
-    else:
-        Dict[key] = [value]
-
-def computeTimesFeatures(userData, log):
-    presentTimePoint = log['timestamp']
-    day1TimePoint = presentTimePoint - timedelta(days=1)
-    day3TimePoint = presentTimePoint - timedelta(days=3)
-    day7TimePoint = presentTimePoint - timedelta(days=7)
-    day8TimePoint = presentTimePoint - timedelta(days=7)
-    day1Count, day3Count, day7Count = 0, 0, 0
-
-    for dayKey in userData['timestamps'].keys():
-        day = datetime.strptime(dayKey, "%Y-%m-%d")
-        dayTime = presentTimePoint.replace(year=day.year, month=day.month, day=day.day)
-
-        if dayTime > day8TimePoint:
-            for pastLog in userData['timestamps'][dayKey]:
-                time = pastLog['timestamp']
-                if time > day7TimePoint:
-                    day7Count += 1
-                    if time > day3TimePoint:
-                        day3Count += 1
-                        if time > day1TimePoint:
-                            day1Count += 1
-
-    delta = 0.000001
-    past1dayMean = day1Count
-    past3daysMean = day3Count / 3.0
-    past7daysMean = day7Count / 7.0
-
-    return ((past1dayMean - past3daysMean) / (past3daysMean + delta)), ((past1dayMean - past7daysMean) / (past7daysMean + delta)), ((past3daysMean - past7daysMean) / (past7daysMean + delta))
-'''
+def getUserData( user ):
+    return []
 
 def generateTimeRange( log, start, end ):
     req_body = {
@@ -109,17 +48,32 @@ def countTimesFeatures(log, es, sameBatchList):
     past3daysCount = pastCounts[1]
     past7daysCount = pastCounts[2]
 
-    past1daysCount += sameBatchList['service'].count( log['service'] )
+    past1daysCount += sameBatchList['service'].count( log['service'] ) + 1.0
 
     delta = 1e-6
     past1dayMean = past1daysCount
     past3daysMean = past3daysCount/3.0
     past7daysMean = past7daysCount/7.0
 
+    timeArray = np.zeros(3)
 
-    return [((past1dayMean - past3daysMean) / (past3daysMean + delta)), 
-            ((past1dayMean - past7daysMean) / (past7daysMean + delta)), 
-            ((past3daysMean - past7daysMean) / (past7daysMean + delta))]
+    if past3daysMean > 0:
+        timeArray[0] = ((past1dayMean - past3daysMean) / past3daysMean )
+    else:
+        timeArray[0] = past1dayMean
+
+    if past7daysMean > 0:
+        timeArray[1] = ((past1dayMean - past7daysMean) / past7daysMean ) 
+        timeArray[2] = ((past3daysMean - past7daysMean) / past7daysMean ) 
+    else:
+        timeArray[1] = past1dayMean
+        timeArray[2] = past3daysMean 
+
+    norm = np.linalg.norm(timeArray) 
+    if not ( np.isnan( norm ) or (norm == 0) ):
+        timeArray = timeArray / norm
+
+    return timeArray
 
 
 def generateRequestBody(user, field, match_string):
@@ -164,8 +118,8 @@ def generateData(log, sameBatchList):
     featureVector = [0.0 for x in xrange(24)]
 
     featureVector[:3] = countTimesFeatures(log, es, sameBatchList)
-    featureVector[1] = featureVector[0]
     featureVector[3:8] = checkExistenceFeatures(log, es, sameBatchList)
+    #featureVector[1] = featureVector[0]
 
     data = {
         'log':log,
@@ -195,4 +149,7 @@ def generateDataFromJob(userDataTuple):
 
     return dataList
 
+if __name__ == '__main__':
+    timeArray = np.array([100000, 100000, 0])
+    print timeArray / np.linalg.norm(timeArray)
 

@@ -69,7 +69,8 @@ def generateLogs(fileName):
     for logList in getData(fileName):
         log = generateLog(logList)
         if inWhiteList(log):
-            log['label']['analyst'] = 'whiteList'
+            #log['label']['analyst'] = 'whiteList'
+            log['label']['analyst'] = 'normal'
         logs.append(log)
         
         count += 1

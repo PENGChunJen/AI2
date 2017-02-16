@@ -5,6 +5,7 @@ import cPickle
 from datetime import date, timedelta
 from collections import deque
 from sys import stdout
+import os.path
 
 import config  
 from file2log import generateLogs 
@@ -23,7 +24,10 @@ def generateFileNameList(startDate, endDate):
     filename_list = []
     for d in dateGenerator(startDate, endDate):
         filename = '%s/all-%s-geo.log'%(config.logPath,d.strftime('%Y%m%d'))
-        filename_list.append(filename)
+        if not os.path.isfile( filename ):
+            print filename, ' does not exist!!'
+        else:
+            filename_list.append(filename)
     return filename_list 
 
 def generateBulkActions( logList, dataList ):
@@ -191,6 +195,15 @@ def runParallel():
         allDataList = generateScoreList(allDataList)
         bulkIndex( logs, allDataList )
 
+
+def saveOnlyLogs():
+    fileNameList = generateFileNameList(config.startDate, config.endDate)
+    for fileName in fileNameList:
+        print('\nLoading %s ...'%(fileName))
+        logs = generateLogs(fileName) 
+        bulkIndex( logs, [] )
+
+
 if __name__ == '__main__':
 
     # Create an index with indexName in module 'config.py' if it does not exist
@@ -201,4 +214,5 @@ if __name__ == '__main__':
 
     #run()
     runParallel()
+    #saveOnlyLogs()
 

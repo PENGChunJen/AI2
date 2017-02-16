@@ -63,6 +63,15 @@ def generateScore(data):
     return data
 
 def generateScoreList(dataList):
+
+    for data in dataList:
+        score = np.sum(np.fabs(data['featureVector']))
+        data['scores']['autoencoder'] = score 
+
+    return dataList
+
+'''
+def generateScoreList(dataList):
     score = 0.0
     #checkpointFile = loadModel('autoencoder') #should be global?
     featureVectors = [ data['featureVector'] for data in dataList ]
@@ -75,16 +84,22 @@ def generateScoreList(dataList):
         #print('encode_decode:',encode_decode[i])
         dataList[i]['scores']['autoencoder'] = loss[i]
     return dataList
+'''
 
 if __name__ == '__main__':
     
     #renewTrainingData('data/normalData.p')
-    featureVector = [0.0 for x in xrange(24)]
+    featureVector = np.zeros(24)
+    featureVector[1] = 4.2
+    featureVector[2] = 0.9 
+    featureVector[3] = 1 
+    featureVector[4] = 1 
+    featureVector[5] = 1 
     testingData = {
         'log':None,
         'featureVector':featureVector,
         'scores':{},
         'label':{'analyst':None}
     }
-    data = generateScore(testingData)
-    print data['scores']
+    dataList = generateScoreList([testingData])
+    print dataList[0]['scores']['autoencoder']
