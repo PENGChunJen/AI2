@@ -25,7 +25,12 @@ def generateTimeRange( log, start, end ):
                             }
                         }
                     }
-                ]
+                ],
+                "must_not": {
+                    "match": {
+                        "label.analyst": "abnormal",
+                    }
+                }
             }
         }
     }
@@ -85,7 +90,12 @@ def generateRequestBody(user, field, match_string):
                 ],
                 "filter": [ 
                     { "term": { "user":user } },
-                ]
+                ],
+                "must_not": {
+                    "match": {
+                        "label.analyst": "abnormal",
+                    }
+                }
             }
         },
         "size":1,

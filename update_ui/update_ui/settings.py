@@ -13,12 +13,11 @@ https://docs.djangoproject.com/en/1.10/ref/settings/
 import os
 import sys
 
-config_relative_path = "../../"
-sys.path.append(config_relative_path)
-import config
-
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR+"/../")
+print sys.path
+import config
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.10/howto/deployment/checklist/
