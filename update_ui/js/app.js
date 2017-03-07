@@ -117,9 +117,13 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             $scope.loadingModal.display = true;
             if($location.search().startDate) {
                 $scope.logMgr.startDate = $location.search().startDate;
+            } else {
+                $location.search('startDate', $scope.logMgr.startDate);
             }
             if($location.search().endDate) {
                 $scope.logMgr.endDate = $location.search().endDate;
+            } else {
+                $location.search('endDate', $scope.logMgr.endDate);
             }
             queryBody = {
                 query: {
@@ -161,6 +165,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                     }
                 }
                 delete queryBody.query.bool.must_not;
+                $scope.displayTableConfig.user = false;
             }
 
             client.search({
