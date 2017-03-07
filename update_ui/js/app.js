@@ -186,8 +186,23 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
         }
 
         $scope.updateLable = function(log) {
+            if(log._source.label.analyst == "")
+                log._source.label.analyst = null;
             $scope.logMgr.modified = true;
             log.updatedLabel = log._source.label.analyst;
+        }
+
+        $scope.openUserTab = function(log) {
+            var oriUser = $location.search().user;
+            var oriEndDate = $location.search().endDate;
+
+            $location.search('user', log._source.log.user);
+            $location.search('endDate', log._source.log.timestamp);
+            var win = window.open($location.absUrl(), '_blank');
+            win.focus();
+
+            $location.search('user', oriUser);
+            $location.search('endDate', oriEndDate);
         }
     })
     .filter("displayIP", function() {
