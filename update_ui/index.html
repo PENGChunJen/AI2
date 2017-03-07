@@ -139,7 +139,7 @@
                             </td>
                             <td ng-show="displayTableConfig.score">{{ log._source.scores.autoencoder | number: 3 }}</td>
                             <td ng-show="displayTableConfig.user">
-                                <a target="_blank" href="/#/?user={{log._source.log.user}}"><button class="btn btn-link">{{ log._source.log.user }}</button></a>
+                                <a target="_blank" href="/#/?user={{log._source.log.user}}&startDate={{logMgr.startDate}}&endDate={{logMgr.endDate}}"><button class="btn btn-link">{{ log._source.log.user }}</button></a>
                             </td>
                             <td ng-show="displayTableConfig.service">{{ log._source.log.service }}</td>
                             <td ng-show="displayTableConfig.ip">{{ log._source.log.IP | displayIP }}</td>

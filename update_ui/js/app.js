@@ -83,7 +83,6 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                 client.bulk({
                     body: updatedLogs,
                 }, function(error, response) {
-                    console.log(response);
                     alert("Server receive the label result, the whole model will be updated later");
                     location.reload();
                 })
@@ -97,6 +96,8 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                     return;
                 }
             }
+            $location.search('startDate', $scope.logMgr.startDate);
+            $location.search('endDate', $scope.logMgr.endDate);
             $scope.logMgr.modified = false;
             $scope.logMgr.logs = [];
             $scope.scrollId = null;
@@ -109,12 +110,17 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             $scope.logMgr.scrollId = response._scroll_id;
             $scope.logMgr.logs = $scope.logMgr.logs.concat(response.hits.hits);
             $scope.loadingModal.display = false;
-            console.log($scope.logMgr.logs);
         }
 
         $scope.initIndex = function() {
             $scope.loadingModal.text = "Retrieving data...";
             $scope.loadingModal.display = true;
+            if($location.search().startDate) {
+                $scope.logMgr.startDate = $location.search().startDate;
+            }
+            if($location.search().endDate) {
+                $scope.logMgr.endDate = $location.search().endDate;
+            }
             queryBody = {
                 query: {
                     bool: {
