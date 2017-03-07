@@ -5,3 +5,4 @@ data
 *.pyc
 cmd.log
 config.py
+update_ui/js/config.js

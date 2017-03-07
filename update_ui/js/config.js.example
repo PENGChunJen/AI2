@@ -1,0 +1,3 @@
+Config = angular.module("Config", []);
+Config.constant("ES_HOST", "ES_IP:9200");
+Config.constant("ES_INDEX", "INDEX_NAME");
