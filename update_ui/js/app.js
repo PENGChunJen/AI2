@@ -296,6 +296,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                     }
                 }
             }
+            $scope.logMgr.modified = true;
         }
 
         $scope.changeLabel = function(log) {
@@ -307,6 +308,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                     log._source.label.analyst = $scope.quickLabel;
                 }
             }
+            $scope.logMgr.modified = true;
         }
     })
     .filter("displayIP", function() {
