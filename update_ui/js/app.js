@@ -31,7 +31,9 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             startDate: moment().subtract(7, 'days').format('YYYY-MM-DD'),
             endDate: moment().format('YYYY-MM-DD'),
             modified: false,
+            querySize: 50,
         }
+        $scope.logFilter = {}
 
         $scope.submitLabels = function() {
             updatedLogs = [];
@@ -219,23 +221,39 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             }
         }
 
+        $scope.selectAll = function() {
+            if($scope.useQuickLabel) {
+                for(var i = 0; i < $scope.logMgr.logs.length; ++i) {
+                    $scope.logMgr.logs[i].quickLabelChecked = true;
+                }
+            } else {
+                for(var i = 0; i < $scope.logMgr.logs.length; ++i) {
+                    $scope.logMgr.logs[i].quickLabelChecked = false;
+                }
+            }
+            $scope.updateAllLabel();
+        }
+
         $scope.updateAllLabel = function() {
             for(var i = 0; i < $scope.logMgr.logs.length; ++i) {
                 var log = $scope.logMgr.logs[i];
-                if($scope.useQuickLabel) {
+                if(log.quickLabelChecked) {
                     if(log._source.label.analyst == "") {
                         log._source.label.analyst = null;
                     } else {
                         log._source.label.analyst = $scope.quickLabel;
                     }
+                }
+            }
+        }
+
+        $scope.changeLabel = function(log) {
+            if(log.quickLabelChecked) {
+                log._source.label.analyst = $scope.quickLabel;
+                if(log._source.label.analyst == "") {
+                    log._source.label.analyst = null;
                 } else {
-                    if(log.quickLabelChecked) {
-                        if(log._source.label.analyst == "") {
-                            log._source.label.analyst = null;
-                        } else {
-                            log._source.label.analyst = $scope.quickLabel;
-                        }
-                    }
+                    log._source.label.analyst = $scope.quickLabel;
                 }
             }
         }
