@@ -128,7 +128,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             } else {
                 $location.search('endDate', $scope.logMgr.endDate);
             }
-            queryBody = {
+            var queryBody = {
                 query: {
                     bool: {
                         filter: {
@@ -144,6 +144,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                                 field: "label.analyst"
                             }
                         },
+                        must: [],
                     }
                 },
                 sort: {
@@ -157,11 +158,12 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             var user = $location.search().user;
             if(user) {
                 $scope.user = user;
-                queryBody.query.bool.must = {
-                    match: {
-                        "log.user": user,
+                queryBody.query.bool.must = [{
+                        match: {
+                            "log.user": user,
+                        }
                     }
-                }
+                ]
                 queryBody.sort = {
                     "log.timestamp": {
                         order: "desc",
@@ -170,6 +172,55 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                 delete queryBody.query.bool.must_not;
                 $scope.displayTableConfig.user = false;
             }
+            if($scope.logMgr.querySize) {
+                queryBody.size = $scope.logMgr.querySize;
+            }
+            if(!angular.equals($scope.logFilter, {})) {
+                var logFilter = $scope.logFilter;
+                if(logFilter._source.log.service) {
+                    queryBody.query.bool.must.push({
+                        match: {
+                            "log.service": logFilter._source.log.service,
+                        }
+                    });
+                }
+                if(logFilter._source.log.device) {
+                    queryBody.query.bool.must.push({
+                        match: {
+                            "log.device": logFilter._source.log.device,
+                        }
+                    });
+                }
+                if(logFilter._source.log.IP) {
+                    queryBody.query.bool.must.push({
+                        match: {
+                            "log.IP": logFilter._source.log.IP,
+                        }
+                    });
+                }
+                if(logFilter._source.log.city) {
+                    queryBody.query.bool.must.push({
+                        match: {
+                            "log.city": logFilter._source.log.city,
+                        }
+                    })
+                }
+                if(logFilter._source.log.county) {
+                    queryBody.query.bool.must.push({
+                        match: {
+                            "log.county": logFilter._source.log.county,
+                        }
+                    })
+                }
+                if(logFilter._source.log.nation) {
+                    queryBody.query.bool.must.push({
+                        match: {
+                            "log.nation": logFilter._source.log.nation,
+                        }
+                    })
+                }
+            }
+            console.log(queryBody);
 
             client.search({
                 index: ES_INDEX,
