@@ -209,6 +209,14 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             $location.search('user', oriUser);
             $location.search('endDate', oriEndDate);
         }
+
+        $scope.localFilter = function() {
+            if($scope.asLocalFilter) {
+                $scope.localLogFilter = $scope.logFilter;
+            } else {
+                $scope.localLogFilter = {};
+            }
+        }
     })
     .filter("displayIP", function() {
         return function(ip) {

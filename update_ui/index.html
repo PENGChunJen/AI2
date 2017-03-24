@@ -28,13 +28,54 @@
                             </div>
                         </datepicker>
                     </div>
-                    <div class="column col-2">
-                        <button class="btn btn-primary" ng-click="changeDateRange()">Change Range</button>
-                    </div>
-                    <div class="column col-6">
+                    <div class="column col-8">
                         <div class="float-right">
                             <button class="btn" ng-click="submitLabels()" ng-disabled="!logMgr.modified">Submit Labels</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column col-12">
+                <input type="checkbox" ng-model="asLocalFilter" ng-change="localFilter()" /> Also use as local display filter
+                <div class="columns">
+                    <div class="column col-2">
+                        <div class="input-group">
+                            <span class="input-group-addon">Service</span>
+                            <input class="form-input" type="text" ng-model="logFilter._source.log.service" placeholder="Service filter" />
+                        </div>
+                    </div>
+                    <div class="column col-2">
+                        <div class="input-group">
+                            <span class="input-group-addon">Device</span>
+                            <input class="form-input" type="text" ng-model="logFilter._source.log.device" placeholder="Device filter" />
+                        </div>
+                    </div>
+                    <div class="column col-2">
+                        <div class="input-group">
+                            <span class="input-group-addon">IP</span>
+                            <input class="form-input" type="text" ng-model="logFilter._source.log.IP" placeholder="IP filter" ng-change="logFilter._source.log.IP = logFilter._source.log.IP.split('.').join('_');" />
+                        </div>
+                    </div>
+                    <div class="column col-2">
+                        <div class="input-group">
+                            <span class="input-group-addon">City</span>
+                            <input class="form-input" type="text" ng-model="logFilter._source.log.city" placeholder="City filter" />
+                        </div>
+                    </div>
+                    <div class="column col-2">
+                        <div class="input-group">
+                            <span class="input-group-addon">County</span>
+                            <input class="form-input" type="text" ng-model="logFilter._source.log.county" placeholder="County filter" />
+                        </div>
+                    </div>
+                    <div class="column col-2">
+                        <div class="input-group">
+                            <span class="input-group-addon">Nation</span>
+                            <input class="form-input" type="text" ng-model="logFilter._source.log.nation" placeholder="Nation filter" />
+                        </div>
+                    </div>
+                    <div class="column col-2">
+                        <button class="btn btn-primary" ng-click="changeDateRange()">Query Matched Logs</button>
                     </div>
                 </div>
             </div>
@@ -76,46 +117,6 @@
             </div>
             <div class="column col-12" style="text-align: center" ng-if="user">
                 <h1 ng-if="user">{{ user }}</h1>                
-            </div>
-            <div class="column col-12">
-                <div class="columns">
-                    <div class="column col-2">
-                        <div class="input-group">
-                            <span class="input-group-addon">Service</span>
-                            <input class="form-input" type="text" ng-model="logFilter._source.log.service" placeholder="Service filter" />
-                        </div>
-                    </div>
-                    <div class="column col-2">
-                        <div class="input-group">
-                            <span class="input-group-addon">Device</span>
-                            <input class="form-input" type="text" ng-model="logFilter._source.log.device" placeholder="Device filter" />
-                        </div>
-                    </div>
-                    <div class="column col-2">
-                        <div class="input-group">
-                            <span class="input-group-addon">IP</span>
-                            <input class="form-input" type="text" ng-model="logFilter._source.log.IP" placeholder="IP filter" ng-change="logFilter._source.log.IP = logFilter._source.log.IP.split('.').join('_');" />
-                        </div>
-                    </div>
-                    <div class="column col-2">
-                        <div class="input-group">
-                            <span class="input-group-addon">City</span>
-                            <input class="form-input" type="text" ng-model="logFilter._source.log.city" placeholder="City filter" />
-                        </div>
-                    </div>
-                    <div class="column col-2">
-                        <div class="input-group">
-                            <span class="input-group-addon">County</span>
-                            <input class="form-input" type="text" ng-model="logFilter._source.log.county" placeholder="County filter" />
-                        </div>
-                    </div>
-                    <div class="column col-2">
-                        <div class="input-group">
-                            <span class="input-group-addon">Nation</span>
-                            <input class="form-input" type="text" ng-model="logFilter._source.log.nation" placeholder="Nation filter" />
-                        </div>
-                    </div>
-                </div>
             </div>  
             <div class="column col-12">
                 <table class="table table-striped table-hover">
@@ -133,7 +134,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr ng-repeat="log in logMgr.logs | filter:logFilter">
+                        <tr ng-repeat="log in logMgr.logs | filter:localLogFilter">
                             <td>
                                 <button class="btn" ng-click="showLogDetail(log)">Info</button>
                             </td>
