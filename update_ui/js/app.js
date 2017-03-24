@@ -6,6 +6,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
     })
     .controller('outliersCtrl', function($scope, $location, client, esFactory, ES_INDEX) {
         $scope.displayTableConfig = {
+            quickSelect: false,
             score: true,
             user: true,
             service: true,
@@ -89,7 +90,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             }
         }
 
-        $scope.changeDateRange = function() {
+        $scope.initLogScroll = function() {
             if ($scope.logMgr.modified) {
                 var result = confirm("Change date range will clear the labels you labeled this time. Do you still want to change date range or cancel and submit the work first?");
                 if (!result) {
@@ -215,6 +216,27 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                 $scope.localLogFilter = $scope.logFilter;
             } else {
                 $scope.localLogFilter = {};
+            }
+        }
+
+        $scope.updateAllLabel = function() {
+            for(var i = 0; i < $scope.logMgr.logs.length; ++i) {
+                var log = $scope.logMgr.logs[i];
+                if($scope.useQuickLabel) {
+                    if(log._source.label.analyst == "") {
+                        log._source.label.analyst = null;
+                    } else {
+                        log._source.label.analyst = $scope.quickLabel;
+                    }
+                } else {
+                    if(log.quickLabelChecked) {
+                        if(log._source.label.analyst == "") {
+                            log._source.label.analyst = null;
+                        } else {
+                            log._source.label.analyst = $scope.quickLabel;
+                        }
+                    }
+                }
             }
         }
     })
