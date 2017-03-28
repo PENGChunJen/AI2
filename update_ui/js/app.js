@@ -244,7 +244,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             $scope.logModal.display = true;
         }
 
-        $scope.updateLable = function(log) {
+        $scope.updateLabel = function(log) {
             if(log._source.label.analyst == "")
                 log._source.label.analyst = null;
             $scope.logMgr.modified = true;
@@ -294,6 +294,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                     } else {
                         log._source.label.analyst = $scope.quickLabel;
                     }
+                    log.updatedLabel = log._source.label.analyst;
                 }
             }
             $scope.logMgr.modified = true;
@@ -307,6 +308,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                 } else {
                     log._source.label.analyst = $scope.quickLabel;
                 }
+                log.updatedLabel = log._source.label.analyst;
             }
             $scope.logMgr.modified = true;
         }
