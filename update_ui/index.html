@@ -7,9 +7,9 @@
     <link rel="stylesheet" type="text/css" href="./lib/720kb.angular-datepicker/angular-datepicker.min.css" />
 </head>
 
-<body ng-controller="outliersCtrl" ng-init="initIndex()">
-    <div class="container">
-        <div class="columns">
+<body ng-controller="outliersCtrl" ng-init="initIndex()" style="min-height: 100vh;">
+    <div class="container" style="height: 90vh">
+        <div class="columns" style="height: 100%">
             <div ng-show="shoControlPannel" class="column col-12">
                 <div class="column col-12">
                     <h3>Log Filter</h3>
@@ -125,57 +125,76 @@
                     </div>
                 </div>
             </div>
-            <div class="column col-12">
+            <div class="column col-12" style="height: 100%">
                 <div class="divider"></div>
                 <label class="form-switch">
                     <input type="checkbox" ng-model="shoControlPannel" />
                     <i class="form-icon"></i> Show Control Pannel
                 </label>
-                <table class="table table-striped table-hover">
-                    <thead>
-                        <tr>
-                            <th ng-show="displayTableConfig.quickSelect"><input type="checkbox" ng-model="useQuickLabel" ng-change="selectAll()" />Select All<br />
-                                <select class="form-select" ng-model="quickLabel" ng-change="updateAllLabel()">
-                                    <option></option>
-                                    <option>normal</option>
-                                    <option>abnormal</option>
-                                    <option>whiteList</option>
-                                </select>
-                            </th>
-                            <th></th>
-                            <th ng-show="displayTableConfig.score">Score</th>
-                            <th ng-show="displayTableConfig.user">User</th>
-                            <th ng-show="displayTableConfig.service">Service</th>
-                            <th ng-show="displayTableConfig.ip">IP</th>
-                            <th ng-show="displayTableConfig.device">Device</th>
-                            <th ng-show="displayTableConfig.geoInfo">Geo Info</th>
-                            <th ng-show="displayTableConfig.timestamp">Timestamp</th>
-                            <th ng-show="displayTableConfig.label">Label</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="log in logMgr.logs | filter:localLogFilter">
-                            <td ng-show="displayTableConfig.quickSelect"><input type="checkbox" ng-model="log.quickLabelChecked" ng-change="changeLabel(log)"></td>
-                            <td>
-                                <button class="btn" ng-click="showLogDetail(log)">Info</button>
-                            </td>
-                            <td ng-show="displayTableConfig.score">{{ log._source.scores.autoencoder | number: 3 }}</td>
-                            <td ng-show="displayTableConfig.user">
-                                <button class="btn btn-link" ng-click="openUserTab(log)">{{ log._source.log.user }}</button>
-                            </td>
-                            <td ng-show="displayTableConfig.service">{{ log._source.log.service }}</td>
-                            <td ng-show="displayTableConfig.ip">{{ log._source.log.ip }}</td>
-                            <td ng-show="displayTableConfig.device">{{ log._source.log.device | deviceDisplay }}</td>
-                            <td ng-show="displayTableConfig.geoInfo">{{ log._source.log.city }}/{{ log._source.log.county }}/{{ log._source.log.nation }}</td>
-                            <td ng-show="displayTableConfig.timestamp">{{ log._source.log.timestamp }}</td>
-                            <td ng-show="displayTableConfig.label"><span class="label" ng-class="{'label-danger': log._source.label.analyst == 'abnormal', 'label-success': log._source.label.analyst == 'normal'}" ng-if="log._source.label.analyst">{{ log._source.label.analyst }}</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="column col-12" style="text-align: center">
-                <button class="btn" ng-click="loadMore()">{{ logMgr.logs.length
-                    < logMgr.logTotal ? 'Load More' : 'No More' }} ({{ logMgr.logs.length }} / {{ logMgr.logTotal }})</button>
+                <ul class="tab tab-block">
+                    <li class="tab-item" ng-class="{'active': currentTab=='Table'}">
+                        <a href="" ng-click="currentTab='Table'">Table</a>
+                    </li>
+                    <li class="tab-item" ng-class="{'active': currentTab=='Geo Map'}">
+                        <a href="" ng-click="currentTab='Geo Map'">Geo Map</a>
+                    </li>
+                    <li class="tab-item" ng-class="{'active': currentTab=='Country Pie'}">
+                        <a href="" ng-click="currentTab='Country Pie'">Country Pie</a>
+                    </li>
+                </ul>
+                <div class="column col-12" ng-show="currentTab=='Table'">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th ng-show="displayTableConfig.quickSelect"><input type="checkbox" ng-model="useQuickLabel" ng-change="selectAll()" />Select All<br />
+                                    <select class="form-select" ng-model="quickLabel" ng-change="updateAllLabel()">
+                                        <option></option>
+                                        <option>normal</option>
+                                        <option>abnormal</option>
+                                        <option>whiteList</option>
+                                    </select>
+                                </th>
+                                <th></th>
+                                <th ng-show="displayTableConfig.score">Score</th>
+                                <th ng-show="displayTableConfig.user">User</th>
+                                <th ng-show="displayTableConfig.service">Service</th>
+                                <th ng-show="displayTableConfig.ip">IP</th>
+                                <th ng-show="displayTableConfig.device">Device</th>
+                                <th ng-show="displayTableConfig.geoInfo">Geo Info</th>
+                                <th ng-show="displayTableConfig.timestamp">Timestamp</th>
+                                <th ng-show="displayTableConfig.label">Label</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="log in logMgr.logs | filter:localLogFilter">
+                                <td ng-show="displayTableConfig.quickSelect"><input type="checkbox" ng-model="log.quickLabelChecked" ng-change="changeLabel(log)"></td>
+                                <td>
+                                    <button class="btn" ng-click="showLogDetail(log)">Info</button>
+                                </td>
+                                <td ng-show="displayTableConfig.score">{{ log._source.scores.autoencoder | number: 3 }}</td>
+                                <td ng-show="displayTableConfig.user">
+                                    <button class="btn btn-link" ng-click="openUserTab(log)">{{ log._source.log.user }}</button>
+                                </td>
+                                <td ng-show="displayTableConfig.service">{{ log._source.log.service }}</td>
+                                <td ng-show="displayTableConfig.ip">{{ log._source.log.ip }}</td>
+                                <td ng-show="displayTableConfig.device">{{ log._source.log.device | deviceDisplay }}</td>
+                                <td ng-show="displayTableConfig.geoInfo">{{ log._source.log.city }}/{{ log._source.log.county }}/{{ log._source.log.nation }}</td>
+                                <td ng-show="displayTableConfig.timestamp">{{ log._source.log.timestamp }}</td>
+                                <td ng-show="displayTableConfig.label"><span class="label" ng-class="{'label-danger': log._source.label.analyst == 'abnormal', 'label-success': log._source.label.analyst == 'normal'}" ng-if="log._source.label.analyst">{{ log._source.label.analyst }}</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="column col-12" style="text-align: center">
+                        <button class="btn" ng-click="loadMore()">{{ logMgr.logs.length
+                            < logMgr.logTotal ? 'Load More' : 'No More' }} ({{ logMgr.logs.length }} / {{ logMgr.logTotal }})</button>
+                    </div>
+                </div>
+                <div class="column col-12" ng-show="currentTab=='Geo Map'" style="height: 100%">
+                    <iframe src="http://163.28.17.48:5601/app/kibana#/visualize/create?embed=true&type=tile_map&indexPattern=production1&_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:now-60d,mode:quick,to:now))&_a=(filters:!(),linked:!f,query:(query_string:(analyze_wildcard:!t,query:'*')),uiState:(mapCenter:!(38.272688535980976,99.49218749999999),mapZoom:3),vis:(aggs:!((enabled:!t,id:'1',params:(),schema:metric,type:count),(enabled:!t,id:'2',params:(autoPrecision:!t,field:location),schema:segment,type:geohash_grid)),listeners:(),params:(addTooltip:!t,heatBlur:15,heatMaxZoom:16,heatMinOpacity:0.1,heatNormalizeData:!t,heatRadius:25,isDesaturated:!t,legendPosition:bottomright,mapCenter:!(15,5),mapType:'Scaled+Circle+Markers',mapZoom:2,wms:(enabled:!f,options:(attribution:'Maps+provided+by+USGS',format:image%2Fpng,layers:'0',styles:'',transparent:!t,version:'1.3.0'),url:'https:%2F%2Fbasemap.nationalmap.gov%2Farcgis%2Fservices%2FUSGSTopo%2FMapServer%2FWMSServer')),title:'New+Visualization',type:tile_map))" style='width: 100%;height: 100%;'></iframe>
+                </div>
+                <div class="column col-12" ng-show="currentTab=='Country Pie'" style="height: 100%">
+                    I am Pi chart
+                </div>
             </div>
         </div>
     </div>

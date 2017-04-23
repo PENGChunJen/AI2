@@ -35,6 +35,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
         }
         $scope.logFilter = {}
         $scope.shoControlPannel = true;
+        $scope.currentTab = 'Table';
 
         $scope.submitLabels = function() {
             updatedLogs = [];
@@ -313,15 +314,6 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                 log.updatedLabel = log._source.label.analyst;
             }
             $scope.logMgr.modified = true;
-        }
-    })
-    .filter("displayIP", function() {
-        return function(ip) {
-            if (ip) {
-                return ip.split('_').join('.');
-            } else {
-                return "";
-            }
         }
     })
     .filter("trueFalse", function() {
