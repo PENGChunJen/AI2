@@ -34,6 +34,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             querySize: 50,
         }
         $scope.logFilter = {}
+        $scope.shoControlPannel = true;
 
         $scope.submitLabels = function() {
             updatedLogs = [];
@@ -147,11 +148,13 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                         must: [],
                     }
                 },
+                /*
                 sort: {
                     "scores.autoencoder": {
                         order: "desc",
                     }
                 },
+                */
                 size: 50,
             }
 
@@ -220,7 +223,6 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                     })
                 }
             }
-            console.log(queryBody);
 
             client.search({
                 index: ES_INDEX,
@@ -333,5 +335,14 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             } else {
                 return "";
             }
+        }
+    })
+    .filter("deviceDisplay", function() {
+        return function(val) {
+            var str = '';
+            angular.forEach(val, function(value, key) {
+                str += (key + ': ' + value + ', ');
+            })
+            return str;
         }
     })
