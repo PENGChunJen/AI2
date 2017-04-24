@@ -171,7 +171,7 @@
                                 <td>
                                     <button class="btn" ng-click="showLogDetail(log)">Info</button>
                                 </td>
-                                <td ng-show="displayTableConfig.score">{{ log._source.scores.autoencoder | number: 3 }}</td>
+                                <td ng-show="displayTableConfig.score">{{ log._source.scores.total | number: 3 }}</td>
                                 <td ng-show="displayTableConfig.user">
                                     <button class="btn btn-link" ng-click="openUserTab(log)">{{ log._source.log.user }}</button>
                                 </td>
@@ -222,8 +222,12 @@
                                         <td>{{ logModal.targetLog._id }}</td>
                                     </tr>
                                     <tr>
-                                        <td>Autoencoder Score</td>
-                                        <td>{{ logModal.targetLog._source.scores.autoencoder }}</td>
+                                        <td>Scores</td>
+                                        <td>
+                                            <ul>
+                                                <li ng-repeat="(key, value) in logModal.targetLog._source.scores">{{ key }}: {{ value }}</li>
+                                            </ul>
+                                        </td>
                                     </tr>
                                     <tr>
                                         <td>Feature Vector</td>

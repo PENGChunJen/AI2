@@ -111,6 +111,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
         }
 
         $scope.dealRetrievedLogs = function(error, response) {
+            console.log(response);
             $scope.logMgr.logTotal = response.hits.total;
             $scope.logMgr.scrollId = response._scroll_id;
             $scope.logMgr.logs = $scope.logMgr.logs.concat(response.hits.hits);
@@ -149,13 +150,11 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                         must: [],
                     }
                 },
-                /*
                 sort: {
-                    "scores.autoencoder": {
+                    "scores.total": {
                         order: "desc",
                     }
                 },
-                */
                 size: 50,
             }
 
