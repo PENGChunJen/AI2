@@ -35,14 +35,14 @@
                         </div>
                         <div class="column col-2">
                             <div class="input-group">
-                                <span class="input-group-addon">County</span>
-                                <input class="form-input" type="text" ng-model="logFilter._source.log.county" placeholder="County filter" />
+                                <span class="input-group-addon">Country</span>
+                                <input class="form-input" type="text" ng-model="logFilter._source.log.country" placeholder="Country filter" />
                             </div>
                         </div>
                         <div class="column col-2">
                             <div class="input-group">
-                                <span class="input-group-addon">Nation</span>
-                                <input class="form-input" type="text" ng-model="logFilter._source.log.nation" placeholder="Nation filter" />
+                                <span class="input-group-addon">Region</span>
+                                <input class="form-input" type="text" ng-model="logFilter._source.log.region" placeholder="Region filter" />
                             </div>
                         </div>
                     </div>
@@ -178,7 +178,7 @@
                                 <td ng-show="displayTableConfig.service">{{ log._source.log.service }}</td>
                                 <td ng-show="displayTableConfig.ip">{{ log._source.log.ip }}</td>
                                 <td ng-show="displayTableConfig.device">{{ log._source.log.device | deviceDisplay }}</td>
-                                <td ng-show="displayTableConfig.geoInfo">{{ log._source.log.city }}/{{ log._source.log.county }}/{{ log._source.log.nation }}</td>
+                                <td ng-show="displayTableConfig.geoInfo">{{ log._source.log.city }}/{{ log._source.log.country }}/{{ log._source.log.region }}</td>
                                 <td ng-show="displayTableConfig.timestamp">{{ log._source.log.timestamp }}</td>
                                 <td ng-show="displayTableConfig.label"><span class="label" ng-class="{'label-danger': log._source.label.analyst == 'abnormal', 'label-success': log._source.label.analyst == 'normal'}" ng-if="log._source.label.analyst">{{ log._source.label.analyst }}</span></td>
                             </tr>
@@ -249,7 +249,8 @@
                                             <ul>
                                                 <li>IP: {{ logModal.targetLog._source.log.ip }}</li>
                                                 <li>ISP: {{ logModal.targetLog._source.log.isp }}</li>
-                                                <li>Geo Info: {{ logModal.targetLog._source.log.city }} / {{ logModal.targetLog._source.log.county }} / {{ logModal.targetLog._source.log.nation }}</li>
+                                                <li>Domain: {{ logModal.targetLog._source.log.domain }}</li>
+                                                <li>Geo Info: {{ logModal.targetLog._source.log.city }} / {{ logModal.targetLog._source.log.country }} / {{ logModal.targetLog._source.log.region }}</li>
                                                 <li>(latitude, longitude): ({{ logModal.targetLog._source.log.location.lat }}, {{ logModal.targetLog._source.log.location.lon }})</li>
                                             </ul>
                                         </td>
