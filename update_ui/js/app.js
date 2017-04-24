@@ -4,7 +4,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             host: ES_HOST,
         })
     })
-    .controller('outliersCtrl', function($scope, $location, client, esFactory, ES_INDEX) {
+    .controller('outliersCtrl', function($scope, $location, $sce, client, esFactory, ES_INDEX) {
         $scope.displayTableConfig = {
             quickSelect: false,
             score: true,
@@ -117,6 +117,15 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             $scope.loadingModal.display = false;
         }
 
+        $scope.genGeoVisualURL = function() {
+            if($scope.user) {
+                $scope.geo_visual_url = $sce.trustAsResourceUrl("http://163.28.17.48:5601/app/kibana#/visualize/create?embed=true&type=tile_map&indexPattern=production1&_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:'" + $scope.logMgr.startDate + "',mode:absolute,to:'" + $scope.logMgr.endDate + "'))&_a=(filters:!(),linked:!f,query:(query_string:(analyze_wildcard:!t,query:log.user=" + $scope.user + ")),uiState:(mapCenter:!(14.944784875088372,0)),vis:(aggs:!((enabled:!t,id:'1',params:(),schema:metric,type:count),(enabled:!t,id:'2',params:(autoPrecision:!t,field:location),schema:segment,type:geohash_grid)),listeners:(),params:(addTooltip:!t,heatBlur:15,heatMaxZoom:16,heatMinOpacity:0.1,heatNormalizeData:!t,heatRadius:25,isDesaturated:!t,legendPosition:bottomright,mapCenter:!(15,5),mapType:'Scaled+Circle+Markers',mapZoom:2,wms:(enabled:!f,options:(attribution:'Maps+provided+by+USGS',format:image%2Fpng,layers:'0',styles:'',transparent:!t,version:'1.3.0'),url:'https:%2F%2Fbasemap.nationalmap.gov%2Farcgis%2Fservices%2FUSGSTopo%2FMapServer%2FWMSServer')),title:'New+Visualization',type:tile_map))");
+                console.log($scope.user);
+            } else {
+                $scope.geo_visual_url = $sce.trustAsResourceUrl("http://163.28.17.48:5601/app/kibana#/visualize/create?embed=true&type=tile_map&indexPattern=production1&_g=(refreshInterval:(display:Off,pause:!f,value:0),time:(from:'" + $scope.logMgr.startDate + "',mode:absolute,to:'" + $scope.logMgr.endDate + "'))&_a=(filters:!(),linked:!f,query:(query_string:(analyze_wildcard:!t,query:'*')),uiState:(mapCenter:!(14.944784875088372,0)),vis:(aggs:!((enabled:!t,id:'1',params:(),schema:metric,type:count),(enabled:!t,id:'2',params:(autoPrecision:!t,field:location),schema:segment,type:geohash_grid)),listeners:(),params:(addTooltip:!t,heatBlur:15,heatMaxZoom:16,heatMinOpacity:0.1,heatNormalizeData:!t,heatRadius:25,isDesaturated:!t,legendPosition:bottomright,mapCenter:!(15,5),mapType:'Scaled+Circle+Markers',mapZoom:2,wms:(enabled:!f,options:(attribution:'Maps+provided+by+USGS',format:image%2Fpng,layers:'0',styles:'',transparent:!t,version:'1.3.0'),url:'https:%2F%2Fbasemap.nationalmap.gov%2Farcgis%2Fservices%2FUSGSTopo%2FMapServer%2FWMSServer')),title:'New+Visualization',type:tile_map))");
+            }
+        }
+
         $scope.initIndex = function() {
             $scope.loadingModal.text = "Retrieving data...";
             $scope.loadingModal.display = true;
@@ -222,6 +231,8 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                     })
                 }
             }
+
+            $scope.genGeoVisualURL();
 
             client.search({
                 index: ES_INDEX,
