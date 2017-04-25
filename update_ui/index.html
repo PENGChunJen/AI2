@@ -171,6 +171,7 @@
                                 </th>
                                 <th></th>
                                 <th ng-show="displayTableConfig.score">Score</th>
+                                <th ng-show="displayTableConfig.label">Label</th>
                                 <th ng-show="displayTableConfig.user">User</th>
                                 <th ng-show="displayTableConfig.service">Service</th>
                                 <th ng-show="displayTableConfig.ip">IP</th>
@@ -178,7 +179,6 @@
                                 <th ng-show="displayTableConfig.isp">ISP</th>
                                 <th ng-show="displayTableConfig.geoInfo">Geo Info</th>
                                 <th ng-show="displayTableConfig.timestamp">Timestamp</th>
-                                <th ng-show="displayTableConfig.label">Label</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -190,6 +190,7 @@
                                     <button class="btn" ng-click="showLogDetail(log)">Info</button>
                                 </td>
                                 <td ng-show="displayTableConfig.score">{{ log._source.scores.total | number: 3 }}</td>
+                                <td ng-show="displayTableConfig.label"><span class="label" ng-class="{'label-danger': log._source.label.analyst == 'abnormal', 'label-success': log._source.label.analyst == 'normal'}" ng-if="log._source.label.analyst">{{ log._source.label.analyst }}</span></td>
                                 <td ng-show="displayTableConfig.user">
                                     <button class="btn btn-link" ng-click="openUserTab(log)">{{ log._source.log.user }}</button>
                                 </td>
@@ -199,7 +200,6 @@
                                 <td ng-show="displayTableConfig.isp">{{ log._source.log.isp }}</td>
                                 <td ng-show="displayTableConfig.geoInfo">{{ log._source.log.city }}/{{ log._source.log.region }}/{{ log._source.log.country }}</td>
                                 <td ng-show="displayTableConfig.timestamp">{{ log._source.log.timestamp }}</td>
-                                <td ng-show="displayTableConfig.label"><span class="label" ng-class="{'label-danger': log._source.label.analyst == 'abnormal', 'label-success': log._source.label.analyst == 'normal'}" ng-if="log._source.label.analyst">{{ log._source.label.analyst }}</span></td>
                             </tr>
                         </tbody>
                     </table>
@@ -213,41 +213,17 @@
                 </div>
                 <div ng-if="user" class="column col-12" ng-show="currentTab=='User Profile'" style="height: 100%">
                     <div class="columns">
-                        <div class="column col-4">
+                        <div class="column col-6">
                             <h4>IP count</h4>
-                            <iframe src="{{ ip_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                            <iframe src="{{ ip_visual_url }}" style="width:100%;height: 50vh"></iframe>
                         </div>
-                        <div class="column col-4">
-                            <h4>City count</h4>
-                            <iframe src="{{ city_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                        <div class="column col-6">
+                            <h4>Location count</h4>
+                            <iframe src="{{ location_visual_url }}" style="width:100%;height: 50vh"></iframe>
                         </div>
-                        <div class="column col-4">
-                            <h4>Region count</h4>
-                            <iframe src="{{ region_visual_url }}" style="width:100%;height: 30vh"></iframe>
-                        </div>
-                        <div class="column col-4">
-                            <h4>Country count</h4>
-                            <iframe src="{{ country_visual_url }}" style="width:100%;height: 30vh"></iframe>
-                        </div>
-                        <div class="column col-4">
+                        <div class="column col-6">
                             <h4>Device count</h4>
-                            <iframe src="{{ device_visual_url }}" style="width:100%;height: 30vh"></iframe>
-                        </div>
-                        <div class="column col-4">
-                            <h4>Model count</h4>
-                            <iframe src="{{ model_visual_url }}" style="width:100%;height: 30vh"></iframe>
-                        </div>
-                        <div class="column col-4">
-                            <h4>Brand count</h4>
-                            <iframe src="{{ brand_visual_url }}" style="width:100%;height: 30vh"></iframe>
-                        </div>
-                        <div class="column col-4">
-                            <h4>OS count</h4>
-                            <iframe src="{{ os_visual_url }}" style="width:100%;height: 30vh"></iframe>
-                        </div>
-                        <div class="column col-4">
-                            <h4>Browser count</h4>
-                            <iframe src="{{ browser_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                            <iframe src="{{ device_visual_url }}" style="width:100%;height: 50vh"></iframe>
                         </div>
                     </div>
                     <div class="columns">
