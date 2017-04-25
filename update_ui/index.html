@@ -11,74 +11,83 @@
     <div class="container" style="height: 90vh">
         <div class="columns" style="height: 100%">
             <div ng-show="shoControlPannel" class="column col-12">
-                <div class="column col-12">
-                    <h3>Log Filter</h3>
-                    <input type="checkbox" ng-model="asLocalFilter" ng-change="localFilter()" /> Also use as local display filter
-                    <div class="columns">
-                        <div class="column col-2">
-                            <div class="input-group">
-                                <span class="input-group-addon">Service</span>
-                                <input class="form-input" type="text" ng-model="logFilter._source.log.service" placeholder="Service filter" />
+                <form>
+                    <div class="column col-12">
+                        <h3>Log Filter</h3>
+                        <input type="checkbox" ng-model="asLocalFilter" ng-change="localFilter()" /> Also use as local display filter
+                        <div class="columns">
+                            <div class="column col-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon">Service</span>
+                                    <input class="form-input" type="text" ng-model="logFilter._source.log.service" placeholder="Service filter" />
+                                </div>
+                            </div>
+                            <div class="column col-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon">IP</span>
+                                    <input class="form-input" type="text" ng-model="logFilter._source.log.ip" placeholder="IP filter" />
+                                </div>
+                            </div>
+                            <div class="column col-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon">City</span>
+                                    <input class="form-input" type="text" ng-model="logFilter._source.log.city" placeholder="City filter" />
+                                </div>
+                            </div>
+                            <div class="column col-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon">Region</span>
+                                    <input class="form-input" type="text" ng-model="logFilter._source.log.region" placeholder="Region filter" />
+                                </div>
+                            </div>
+                            <div class="column col-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon">Country</span>
+                                    <input class="form-input" type="text" ng-model="logFilter._source.log.country" placeholder="Country filter" />
+                                </div>
                             </div>
                         </div>
-                        <div class="column col-2">
-                            <div class="input-group">
-                                <span class="input-group-addon">IP</span>
-                                <input class="form-input" type="text" ng-model="logFilter._source.log.ip" placeholder="IP filter" />
+                        <div class="columns">
+                            <div class="column col-2">
+                                <datepicker date-format="yyyy-MM-dd" selector="form-input">
+                                    <div class="input-group">
+                                        <span class="input-group-addon">Start</span>
+                                        <input class="form-input" type="text" ng-model="logMgr.startDate" />
+                                    </div>
+                                </datepicker>
                             </div>
-                        </div>
-                        <div class="column col-2">
-                            <div class="input-group">
-                                <span class="input-group-addon">City</span>
-                                <input class="form-input" type="text" ng-model="logFilter._source.log.city" placeholder="City filter" />
+                            <div class="column col-2">
+                                <datepicker date-format="yyyy-MM-dd" selector="form-input">
+                                    <div class="input-group">
+                                        <span class="input-group-addon">End</span>
+                                        <input class="form-input" type="text" ng-model="logMgr.endDate" />
+                                    </div>
+                                </datepicker>
                             </div>
-                        </div>
-                        <div class="column col-2">
-                            <div class="input-group">
-                                <span class="input-group-addon">Region</span>
-                                <input class="form-input" type="text" ng-model="logFilter._source.log.region" placeholder="Region filter" />
+                            <div class="column col-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon">Query Size</span>
+                                    <input class="form-input" type="number" ng-model="logMgr.querySize" placeholder="Query Size" />
+                                </div>
                             </div>
-                        </div>
-                        <div class="column col-2">
-                            <div class="input-group">
-                                <span class="input-group-addon">Country</span>
-                                <input class="form-input" type="text" ng-model="logFilter._source.log.country" placeholder="Country filter" />
+                            <div class="column col-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon">User</span>
+                                    <input class="form-input" type="text" ng-model="logMgr.user" placeholder="user" />
+                                </div>
+                            </div>
+                            <div class="column col-2">
+                                <button class="btn btn-primary" ng-click="initLogScroll()">Query Matched Logs</button>
                             </div>
                         </div>
                     </div>
-                    <div class="columns">
-                        <div class="column col-2">
-                            <datepicker date-format="yyyy-MM-dd" selector="form-input">
-                                <div class="input-group">
-                                    <span class="input-group-addon">Start</span>
-                                    <input class="form-input" type="text" ng-model="logMgr.startDate" />
-                                </div>
-                            </datepicker>
-                        </div>
-                        <div class="column col-2">
-                            <datepicker date-format="yyyy-MM-dd" selector="form-input">
-                                <div class="input-group">
-                                    <span class="input-group-addon">End</span>
-                                    <input class="form-input" type="text" ng-model="logMgr.endDate" />
-                                </div>
-                            </datepicker>
-                        </div>
-                        <div class="column col-2">
-                            <div class="input-group">
-                                <span class="input-group-addon">Query Size</span>
-                                <input class="form-input" type="number" ng-model="logMgr.querySize" placeholder="Query Size" />
-                            </div>
-                        </div>
-                        <div class="column col-2">
-                            <button class="btn btn-primary" ng-click="initLogScroll()">Query Matched Logs</button>
-                        </div>
-                        <div class="column col-4">
-                            <div class="float-right">
-                                <button class="btn" ng-click="submitLabels()" ng-disabled="!logMgr.modified">Submit Labels</button>
-                            </div>
-                        </div>
+                </form>
+                <div class="column col-12">
+                    <div class="float-right">
+                        <button class="btn" ng-click="submitLabels()" ng-disabled="!logMgr.modified">Submit Labels</button>
                     </div>
                 </div>
+                <br />
                 <div class="column col-12" style="text-align: center" ng-if="user">
                     <div class="divider"></div>
                     <h1 ng-if="user">{{ user }}</h1>
@@ -146,7 +155,9 @@
                     <table class="table table-striped table-hover">
                         <thead>
                             <tr>
-                                <th ng-show="displayTableConfig.quickSelect"><input type="checkbox" ng-model="useQuickLabel" ng-change="selectAll()" />Select All<br />
+                                <th ng-show="displayTableConfig.quickSelect">
+                                    <input type="checkbox" ng-model="useQuickLabel" ng-change="selectAll()" />Select All
+                                    <br />
                                     <select class="form-select" ng-model="quickLabel" ng-change="updateAllLabel()">
                                         <option></option>
                                         <option>normal</option>
@@ -167,7 +178,9 @@
                         </thead>
                         <tbody>
                             <tr ng-repeat="log in logMgr.logs | filter:localLogFilter">
-                                <td ng-show="displayTableConfig.quickSelect"><input type="checkbox" ng-model="log.quickLabelChecked" ng-change="changeLabel(log)"></td>
+                                <td ng-show="displayTableConfig.quickSelect">
+                                    <input type="checkbox" ng-model="log.quickLabelChecked" ng-change="changeLabel(log)">
+                                </td>
                                 <td>
                                     <button class="btn" ng-click="showLogDetail(log)">Info</button>
                                 </td>
@@ -263,15 +276,16 @@
                                         <td>Other Info</td>
                                         <td>
                                             <ul>
-                                                <li>browser: 
+                                                <li>browser:
                                                     <ul>
-                                                        <li ng-repeat="(key, value) in logModal.targetLog._source.log.browser" >{{ key }}: {{ value }}</li>
+                                                        <li ng-repeat="(key, value) in logModal.targetLog._source.log.browser">{{ key }}: {{ value }}</li>
                                                     </ul>
                                                 </li>
-                                                <li>os: 
+                                                <li>os:
                                                     <ul>
-                                                        <li ng-repeat="(key, value) in logModal.targetLog._source.log.os">{{ key }}: {{ value }}</li></li>
-                                                    </ul>
+                                                        <li ng-repeat="(key, value) in logModal.targetLog._source.log.os">{{ key }}: {{ value }}</li>
+                                                </li>
+                                                </ul>
                                             </ul>
                                         </td>
                                     </tr>
