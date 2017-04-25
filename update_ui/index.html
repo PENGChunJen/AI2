@@ -151,8 +151,8 @@
                     <li class="tab-item" ng-class="{'active': currentTab=='Geo Map'}">
                         <a href="" ng-click="currentTab='Geo Map'">Geo Map</a>
                     </li>
-                    <li class="tab-item" ng-class="{'active': currentTab=='Country Pie'}">
-                        <a href="" ng-click="currentTab='Country Pie'">Country Pie</a>
+                    <li ng-show="user" class="tab-item" ng-class="{'active': currentTab=='Country Pie'}">
+                        <a href="" ng-click="currentTab='User Profile';genVisualURL()">User Profile</a>
                     </li>
                 </ul>
                 <div class="column col-12" ng-show="currentTab=='Table'">
@@ -211,8 +211,47 @@
                 <div class="column col-12" ng-show="currentTab=='Geo Map'" style="height: 100%">
                     <iframe ng-src="{{ geo_visual_url }}" style='width: 100%;height: 100%;'></iframe>
                 </div>
-                <div class="column col-12" ng-show="currentTab=='Country Pie'" style="height: 100%">
-                    I am Pi chart
+                <div ng-if="user" class="column col-12" ng-show="currentTab=='User Profile'" style="height: 100%">
+                    <div class="columns">
+                        <div class="column col-4">
+                            <h4>IP count</h4>
+                            <iframe src="{{ ip_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                        </div>
+                        <div class="column col-4">
+                            <h4>City count</h4>
+                            <iframe src="{{ city_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                        </div>
+                        <div class="column col-4">
+                            <h4>Region count</h4>
+                            <iframe src="{{ region_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                        </div>
+                        <div class="column col-4">
+                            <h4>Country count</h4>
+                            <iframe src="{{ country_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                        </div>
+                        <div class="column col-4">
+                            <h4>Device count</h4>
+                            <iframe src="{{ device_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                        </div>
+                        <div class="column col-4">
+                            <h4>Model count</h4>
+                            <iframe src="{{ model_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                        </div>
+                        <div class="column col-4">
+                            <h4>Brand count</h4>
+                            <iframe src="{{ brand_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                        </div>
+                        <div class="column col-4">
+                            <h4>OS count</h4>
+                            <iframe src="{{ os_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                        </div>
+                        <div class="column col-4">
+                            <h4>Browser count</h4>
+                            <iframe src="{{ browser_visual_url }}" style="width:100%;height: 30vh"></iframe>
+                        </div>
+                    </div>
+                    <div class="columns">
+                    </div>
                 </div>
             </div>
         </div>
