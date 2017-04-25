@@ -223,10 +223,10 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                         }
                     })
                 }
-                if(logFilter._source.log.nation) {
+                if(logFilter._source.log.country) {
                     queryBody.query.bool.must.push({
                         match: {
-                            "log.nation": logFilter._source.log.nation,
+                            "log.country": logFilter._source.log.country,
                         }
                     })
                 }
