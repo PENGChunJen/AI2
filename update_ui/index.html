@@ -10,7 +10,7 @@
 <body ng-controller="outliersCtrl" ng-init="initIndex()" style="min-height: 100vh;">
     <div class="container" style="height: 90vh">
         <div class="columns" style="height: 100%">
-            <div ng-show="shoControlPannel" class="column col-12">
+            <div ng-show="showControlPannel" class="column col-12">
                 <form>
                     <div class="column col-12">
                         <h3>Log Filter</h3>
@@ -141,7 +141,7 @@
             <div class="column col-12" style="height: 100%">
                 <div class="divider"></div>
                 <label class="form-switch">
-                    <input type="checkbox" ng-model="shoControlPannel" />
+                    <input type="checkbox" ng-model="showControlPannel" />
                     <i class="form-icon"></i> Show Control Pannel
                 </label>
                 <ul class="tab tab-block">
@@ -151,7 +151,7 @@
                     <li class="tab-item" ng-class="{'active': currentTab=='Geo Map'}">
                         <a href="" ng-click="currentTab='Geo Map'">Geo Map</a>
                     </li>
-                    <li ng-show="user" class="tab-item" ng-class="{'active': currentTab=='Country Pie'}">
+                    <li ng-show="user" class="tab-item" ng-class="{'active': currentTab=='User Profile'}">
                         <a href="" ng-click="currentTab='User Profile';genVisualURL()">User Profile</a>
                     </li>
                 </ul>
@@ -227,6 +227,112 @@
                         </div>
                     </div>
                     <div class="columns">
+                        <div class="column col-12">
+                            <div class="divider"></div>
+                            <label class="form-switch">
+                                <input type="checkbox" ng-model="userProfileTabMgr.show" ng-change="genVisualEachService()" />
+                                <i class="form-icon"></i> Show visualization for each service
+                            </label>
+                            <div ng-show="userProfileTabMgr.show">
+                                <ul class="tab tab-block">
+                                    <li class="tab-item" ng-class="{'active': userProfileTabMgr.currentTab=='SMTP'}">
+                                        <a href="" ng-click="userProfileTabMgr.currentTab='SMTP';genVisualEachService()">SMTP</a>
+                                    </li>
+                                    <li class="tab-item" ng-class="{'active': userProfileTabMgr.currentTab=='VPN'}">
+                                        <a href="" ng-click="userProfileTabMgr.currentTab='VPN';genVisualEachService()">VPN</a>
+                                    </li>
+                                    <li class="tab-item" ng-class="{'active': userProfileTabMgr.currentTab=='Exchange'}">
+                                        <a href="" ng-click="userProfileTabMgr.currentTab='Exchange';genVisualEachService()">Exchange</a>
+                                    </li>
+                                    <li class="tab-item" ng-class="{'active': userProfileTabMgr.currentTab=='POP3'}">
+                                        <a href="" ng-click="userProfileTabMgr.currentTab='POP3';genVisualEachService()">POP3</a>
+                                    </li>
+                                    <li class="tab-item" ng-class="{'active': userProfileTabMgr.currentTab=='OWA'}">
+                                        <a href="" ng-click="userProfileTabMgr.currentTab='OWA';genVisualEachService()">OWA</a>
+                                    </li>
+                                </ul>
+                                <div ng-show="userProfileTabMgr.currentTab=='SMTP'">
+                                    <div class="columns">
+                                        <div class="column col-6">
+                                            <h4>IP count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.SMTP.ip_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                        <div class="column col-6">
+                                            <h4>Location count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.SMTP.location_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                        <div class="column col-6">
+                                            <h4>Device count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.SMTP.device_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div ng-show="userProfileTabMgr.currentTab=='VPN'">
+                                    <div class="columns">
+                                        <div class="column col-6">
+                                            <h4>IP count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.VPN.ip_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                        <div class="column col-6">
+                                            <h4>Location count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.VPN.location_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                        <div class="column col-6">
+                                            <h4>Device count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.VPN.device_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div ng-show="userProfileTabMgr.currentTab=='Exchange'">
+                                    <div class="columns">
+                                        <div class="column col-6">
+                                            <h4>IP count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.Exchange.ip_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                        <div class="column col-6">
+                                            <h4>Location count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.Exchange.location_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                        <div class="column col-6">
+                                            <h4>Device count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.Exchange.device_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div ng-show="userProfileTabMgr.currentTab=='POP3'">
+                                    <div class="columns">
+                                        <div class="column col-6">
+                                            <h4>IP count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.POP3.ip_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                        <div class="column col-6">
+                                            <h4>Location count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.POP3.location_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                        <div class="column col-6">
+                                            <h4>Device count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.POP3.device_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div ng-show="userProfileTabMgr.currentTab=='OWA'">
+                                    <div class="columns">
+                                        <div class="column col-6">
+                                            <h4>IP count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.OWA.ip_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                        <div class="column col-6">
+                                            <h4>Location count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.OWA.location_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                        <div class="column col-6">
+                                            <h4>Device count</h4>
+                                            <iframe src="{{ userProfileTabMgr.visualURLs.OWA.device_visual_url }}" style="width:100%;height: 50vh"></iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
