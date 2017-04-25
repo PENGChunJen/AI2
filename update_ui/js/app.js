@@ -216,10 +216,10 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                         }
                     })
                 }
-                if(logFilter._source.log.county) {
+                if(logFilter._source.log.region) {
                     queryBody.query.bool.must.push({
                         match: {
-                            "log.county": logFilter._source.log.county,
+                            "log.region": logFilter._source.log.region,
                         }
                     })
                 }
