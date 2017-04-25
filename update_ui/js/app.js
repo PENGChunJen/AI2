@@ -11,7 +11,8 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             user: true,
             service: true,
             ip: false,
-            device: true,
+            deviceFamily: true,
+            isp: true,
             geoInfo: true,
             timestamp: true,
             label: true,
@@ -121,6 +122,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             $scope.logMgr.scrollId = response._scroll_id;
             $scope.logMgr.logs = $scope.logMgr.logs.concat(response.hits.hits);
             $scope.loadingModal.display = false;
+            console.log(response);
         }
 
         $scope.genGeoVisualURL = function() {
@@ -197,13 +199,6 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                     queryBody.query.bool.must.push({
                         match: {
                             "log.service": logFilter._source.log.service,
-                        }
-                    });
-                }
-                if(logFilter._source.log.device) {
-                    queryBody.query.bool.must.push({
-                        match: {
-                            "log.device": logFilter._source.log.device,
                         }
                     });
                 }

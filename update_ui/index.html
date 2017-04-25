@@ -116,8 +116,12 @@
                             <i class="form-icon"></i> IP
                         </label>
                         <label class="form-switch">
-                            <input type="checkbox" ng-model="displayTableConfig.device" />
-                            <i class="form-icon"></i> Device
+                            <input type="checkbox" ng-model="displayTableConfig.deviceFamily" />
+                            <i class="form-icon"></i> Device Family
+                        </label>
+                        <label class="form-switch">
+                            <input type="checkbox" ng-model="displayTableConfig.isp" />
+                            <i class="form-icon"></i> ISP
                         </label>
                         <label class="form-switch">
                             <input type="checkbox" ng-model="displayTableConfig.geoInfo" />
@@ -170,7 +174,8 @@
                                 <th ng-show="displayTableConfig.user">User</th>
                                 <th ng-show="displayTableConfig.service">Service</th>
                                 <th ng-show="displayTableConfig.ip">IP</th>
-                                <th ng-show="displayTableConfig.device">Device</th>
+                                <th ng-show="displayTableConfig.deviceFamily">Device Family</th>
+                                <th ng-show="displayTableConfig.isp">ISP</th>
                                 <th ng-show="displayTableConfig.geoInfo">Geo Info</th>
                                 <th ng-show="displayTableConfig.timestamp">Timestamp</th>
                                 <th ng-show="displayTableConfig.label">Label</th>
@@ -190,7 +195,8 @@
                                 </td>
                                 <td ng-show="displayTableConfig.service">{{ log._source.log.service }}</td>
                                 <td ng-show="displayTableConfig.ip">{{ log._source.log.ip }}</td>
-                                <td ng-show="displayTableConfig.device">{{ log._source.log.device | deviceDisplay }}</td>
+                                <td ng-show="displayTableConfig.deviceFamily">{{ log._source.log.device.family }}</td>
+                                <td ng-show="displayTableConfig.isp">{{ log._source.log.isp }}</td>
                                 <td ng-show="displayTableConfig.geoInfo">{{ log._source.log.city }}/{{ log._source.log.region }}/{{ log._source.log.country }}</td>
                                 <td ng-show="displayTableConfig.timestamp">{{ log._source.log.timestamp }}</td>
                                 <td ng-show="displayTableConfig.label"><span class="label" ng-class="{'label-danger': log._source.label.analyst == 'abnormal', 'label-success': log._source.label.analyst == 'normal'}" ng-if="log._source.label.analyst">{{ log._source.label.analyst }}</span></td>
@@ -276,6 +282,9 @@
                                         <td>Other Info</td>
                                         <td>
                                             <ul>
+                                                <li>
+                                                    user agent string: {{ logModal.targetLog._source.log.user_agent_string }}
+                                                </li>
                                                 <li>browser:
                                                     <ul>
                                                         <li ng-repeat="(key, value) in logModal.targetLog._source.log.browser">{{ key }}: {{ value }}</li>
