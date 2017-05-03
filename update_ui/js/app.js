@@ -11,7 +11,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
             user: true,
             service: true,
             ip: false,
-            deviceFamily: true,
+            userAgentString: true,
             isp: true,
             geoInfo: true,
             timestamp: true,
@@ -250,10 +250,17 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                         }
                     });
                 }
-                if(logFilter._source.log.IP) {
+                if(logFilter._source.log.isp) {
                     queryBody.query.bool.must.push({
                         match: {
-                            "log.IP": logFilter._source.log.IP,
+                            "log.isp": logFilter._source.log.isp,
+                        }
+                    });
+                }
+                if(logFilter._source.log.ip) {
+                    queryBody.query.bool.must.push({
+                        match: {
+                            "log.ip": logFilter._source.log.ip,
                         }
                     });
                 }

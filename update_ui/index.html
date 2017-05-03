@@ -46,6 +46,12 @@
                                     <input class="form-input" type="text" ng-model="logFilter._source.log.country" placeholder="Country filter" />
                                 </div>
                             </div>
+                            <div class="column col-2">
+                                <div class="input-group">
+                                    <span class="input-group-addon">ISP</span>
+                                    <input class="form-input" type="text" ng-model="logFilter._source.log.isp" placeholder="ISP filter" />
+                                </div>
+                            </div>
                         </div>
                         <div class="columns">
                             <div class="column col-2">
@@ -116,8 +122,8 @@
                             <i class="form-icon"></i> IP
                         </label>
                         <label class="form-switch">
-                            <input type="checkbox" ng-model="displayTableConfig.deviceFamily" />
-                            <i class="form-icon"></i> Device Family
+                            <input type="checkbox" ng-model="displayTableConfig.userAgentString" />
+                            <i class="form-icon"></i> User agent string
                         </label>
                         <label class="form-switch">
                             <input type="checkbox" ng-model="displayTableConfig.isp" />
@@ -167,6 +173,7 @@
                                         <option>normal</option>
                                         <option>abnormal</option>
                                         <option>whiteList</option>
+                                        <option>ignore</option>
                                     </select>
                                 </th>
                                 <th></th>
@@ -175,7 +182,7 @@
                                 <th ng-show="displayTableConfig.user">User</th>
                                 <th ng-show="displayTableConfig.service">Service</th>
                                 <th ng-show="displayTableConfig.ip">IP</th>
-                                <th ng-show="displayTableConfig.deviceFamily">Device Family</th>
+                                <th ng-show="displayTableConfig.userAgentString">User agent string</th>
                                 <th ng-show="displayTableConfig.isp">ISP</th>
                                 <th ng-show="displayTableConfig.geoInfo">Geo Info</th>
                                 <th ng-show="displayTableConfig.timestamp">Timestamp</th>
@@ -196,7 +203,7 @@
                                 </td>
                                 <td ng-show="displayTableConfig.service">{{ log._source.log.service }}</td>
                                 <td ng-show="displayTableConfig.ip">{{ log._source.log.ip }}</td>
-                                <td ng-show="displayTableConfig.deviceFamily">{{ log._source.log.device.family }}</td>
+                                <td ng-show="displayTableConfig.userAgentString">{{ log._source.log.user_agent_string }}</td>
                                 <td ng-show="displayTableConfig.isp">{{ log._source.log.isp }}</td>
                                 <td ng-show="displayTableConfig.geoInfo">{{ log._source.log.city }}/{{ log._source.log.region }}/{{ log._source.log.country }}</td>
                                 <td ng-show="displayTableConfig.timestamp">{{ log._source.log.timestamp }}</td>
@@ -370,14 +377,6 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td>Feature Vector</td>
-                                        <td>
-                                            <ul>
-                                                <li ng-repeat="(key, value) in logModal.targetLog._source.features">{{ key }}: {{ value }}</li>
-                                            </ul>
-                                        </td>
-                                    </tr>
-                                    <tr>
                                         <td>User</td>
                                         <td>
                                             <button class="btn btn-link" ng-click="openUserTab(logModal.targetLog)">{{ logModal.targetLog._source.log.user }}</button>
@@ -427,6 +426,14 @@
                                             </ul>
                                         </td>
                                     </tr>
+                                    <tr>
+                                        <td>Feature Vector</td>
+                                        <td>
+                                            <ul>
+                                                <li ng-repeat="(key, value) in logModal.targetLog._source.features">{{ key }}: {{ value }}</li>
+                                            </ul>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -441,6 +448,7 @@
                         <option>normal</option>
                         <option>abnormal</option>
                         <option>whiteList</option>
+                        <option>ignore</option>
                     </select>
                     <button class="btn btn-link" ng-click="logModal.display=false;">Close</button>
                 </div>
