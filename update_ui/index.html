@@ -4,6 +4,7 @@
 <head>
     <title>Analyst Interface</title>
     <link rel="stylesheet" type="text/css" href="./lib/spectre.min.css" />
+    <link rel="stylesheet" type="text/css" href="./lib/spectre-icons.css"/>
     <link rel="stylesheet" type="text/css" href="./lib/720kb.angular-datepicker/angular-datepicker.min.css" />
 </head>
 
@@ -110,6 +111,10 @@
                             <i class="form-icon"></i> Score
                         </label>
                         <label class="form-switch">
+                            <input type="checkbox" ng-model="displayTableConfig.timestamp" />
+                            <i class="form-icon"></i> Timestamp
+                        </label>
+                        <label class="form-switch">
                             <input type="checkbox" ng-model="displayTableConfig.user" />
                             <i class="form-icon"></i> User
                         </label>
@@ -132,10 +137,6 @@
                         <label class="form-switch">
                             <input type="checkbox" ng-model="displayTableConfig.geoInfo" />
                             <i class="form-icon"></i> Geo info
-                        </label>
-                        <label class="form-switch">
-                            <input type="checkbox" ng-model="displayTableConfig.timestamp" />
-                            <i class="form-icon"></i> Timestamp
                         </label>
                         <label class="form-switch">
                             <input type="checkbox" ng-model="displayTableConfig.label" />
@@ -177,7 +178,8 @@
                                     </select>
                                 </th>
                                 <th></th>
-                                <th ng-show="displayTableConfig.score">Score</th>
+                                <th ng-show="displayTableConfig.score">Score <span ng-show="user"><i class="icon icon-resize-vert" ng-hide="UserLogSortByScore" style="cursor: pointer" ng-click="sortUserLog()"></i><i class="icon icon-arrow-down" ng-show="UserLogSortByScore"></i></span></th>
+                                <th ng-show="displayTableConfig.timestamp">Timestamp <span ng-show="user"><i class="icon icon-resize-vert" ng-show="UserLogSortByScore" style="cursor: pointer" ng-click="sortUserLog()"></i><i class="icon icon-arrow-down" ng-hide="UserLogSortByScore"></i></span></th>
                                 <th ng-show="displayTableConfig.label">Label</th>
                                 <th ng-show="displayTableConfig.user">User</th>
                                 <th ng-show="displayTableConfig.service">Service</th>
@@ -185,7 +187,6 @@
                                 <th ng-show="displayTableConfig.userAgentString">User agent string</th>
                                 <th ng-show="displayTableConfig.isp">ISP</th>
                                 <th ng-show="displayTableConfig.geoInfo">Geo Info</th>
-                                <th ng-show="displayTableConfig.timestamp">Timestamp</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -197,6 +198,7 @@
                                     <button class="btn" ng-click="showLogDetail(log)">Info</button>
                                 </td>
                                 <td ng-show="displayTableConfig.score">{{ log._source.scores.total | number: 3 }}</td>
+                                <td ng-show="displayTableConfig.timestamp">{{ log._source.log.timestamp }}</td>
                                 <td ng-show="displayTableConfig.label"><span class="label" ng-class="{'label-danger': log._source.label.analyst == 'abnormal', 'label-success': log._source.label.analyst == 'normal'}" ng-if="log._source.label.analyst">{{ log._source.label.analyst }}</span></td>
                                 <td ng-show="displayTableConfig.user">
                                     <button class="btn btn-link" ng-click="openUserTab(log)">{{ log._source.log.user }}</button>
@@ -206,7 +208,6 @@
                                 <td ng-show="displayTableConfig.userAgentString">{{ log._source.log.user_agent_string }}</td>
                                 <td ng-show="displayTableConfig.isp">{{ log._source.log.isp }}</td>
                                 <td ng-show="displayTableConfig.geoInfo">{{ log._source.log.city }}/{{ log._source.log.region }}/{{ log._source.log.country }}</td>
-                                <td ng-show="displayTableConfig.timestamp">{{ log._source.log.timestamp }}</td>
                             </tr>
                         </tbody>
                     </table>

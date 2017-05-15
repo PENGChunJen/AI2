@@ -68,6 +68,7 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
         $scope.logFilter = {}
         $scope.showControlPannel = true;
         $scope.currentTab = 'Table';
+        $scope.UserLogSortByScore = false;
 
         $scope.submitLabels = function() {
             updatedLogs = [];
@@ -229,10 +230,12 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                             "log.user": user,
                         }
                     }
-                ]
-                queryBody.sort = {
-                    "log.timestamp": {
-                        order: "desc",
+                ];
+                if(!$scope.UserLogSortByScore) {
+                    queryBody.sort = {
+                        "log.timestamp": {
+                            order: "desc",
+                        }
                     }
                 }
                 delete queryBody.query.bool.must_not;
@@ -376,6 +379,15 @@ angular.module('analystApp', ['elasticsearch', '720kb.datepicker', 'Config'])
                 log.updatedLabel = log._source.label.analyst;
             }
             $scope.logMgr.modified = true;
+        }
+
+        $scope.sortUserLog = function() {
+            if($scope.UserLogSortByScore) {
+                $scope.UserLogSortByScore = false;
+            } else {
+                $scope.UserLogSortByScore = true;
+            }
+            $scope.initLogScroll();
         }
     })
     .filter("trueFalse", function() {
